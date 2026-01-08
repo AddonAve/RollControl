@@ -1123,37 +1123,37 @@ config.save(settings)
 rollchange = true
 end
 
-if     name:startswith("fig")   	then set(1)   -- Fighter's Roll
-elseif name:startswith("mon")    	then set(2)   -- Monk's Roll
-elseif name:startswith("hea")    	then set(3)   -- Healer's Roll
-elseif name:startswith("wiz")     	then set(4)   -- Wizard's Roll
-elseif name:startswith("war")		then set(5)   -- Warlock's Roll
-elseif name:startswith("rog")   	then set(6)   -- Rogue's Roll
-elseif name:startswith("gal") 		then set(7)   -- Gallant's Roll
-elseif name:startswith("cha")   	then set(8)   -- Chaos Roll
-elseif name:startswith("bea")   	then set(9)   -- Beast Roll
-elseif name:startswith("cho")  		then set(10)  -- Choral Roll
-elseif name:startswith("hun")    	then set(11)  -- Hunter's Roll
-elseif name:startswith("sam")     	then set(12)  -- Samurai Roll
-elseif name:startswith("nin")     	then set(13)  -- Ninja Roll
-elseif name:startswith("dra")   	then set(14)  -- Drachen Roll
-elseif name:startswith("evo")   	then set(15)  -- Evoker's Roll
-elseif name:startswith("mag")   	then set(16)  -- Magus Roll
-elseif name:startswith("cor")     	then set(17)  -- Corsair's Roll
-elseif name:startswith("pup")     	then set(18)  -- Puppet Roll
-elseif name:startswith("dan")   	then set(19)  -- Dancer's Roll
-elseif name:startswith("sch")     	then set(20)  -- Scholar's Roll
-elseif name:startswith("bol")    	then set(21)  -- Bolter's Roll
-elseif name:startswith("cas")    	then set(22)  -- Caster's Roll
-elseif name:startswith("cou")  		then set(23)  -- Courser's Roll
-elseif name:startswith("bli")   	then set(24)  -- Blitzer's Roll
-elseif name:startswith("tac")    	then set(25)  -- Tactician's Roll
-elseif name:startswith("all")     	then set(26)  -- Allies' Roll
-elseif name:startswith("mis")   	then set(27)  -- Miser's Roll
-elseif name:startswith("com")    	then set(28)  -- Companion's Roll
-elseif name:startswith("ave")  		then set(29)  -- Avenger's Roll
-elseif name:startswith("nat") 		then set(30)  -- Naturalist's Roll
-elseif name:startswith("run")     	then set(31)  -- Runeist's Roll
+if     name:startswith("fig")	then set(1)   -- Fighter's Roll
+elseif name:startswith("mon")   then set(2)   -- Monk's Roll
+elseif name:startswith("hea")   then set(3)   -- Healer's Roll
+elseif name:startswith("wiz")   then set(4)   -- Wizard's Roll
+elseif name:startswith("war")	then set(5)   -- Warlock's Roll
+elseif name:startswith("rog")   then set(6)   -- Rogue's Roll
+elseif name:startswith("gal") 	then set(7)   -- Gallant's Roll
+elseif name:startswith("cha")   then set(8)   -- Chaos Roll
+elseif name:startswith("bea")   then set(9)   -- Beast Roll
+elseif name:startswith("cho")  	then set(10)  -- Choral Roll
+elseif name:startswith("hun")   then set(11)  -- Hunter's Roll
+elseif name:startswith("sam")   then set(12)  -- Samurai Roll
+elseif name:startswith("nin")   then set(13)  -- Ninja Roll
+elseif name:startswith("dra")   then set(14)  -- Drachen Roll
+elseif name:startswith("evo")   then set(15)  -- Evoker's Roll
+elseif name:startswith("mag")   then set(16)  -- Magus Roll
+elseif name:startswith("cor")   then set(17)  -- Corsair's Roll
+elseif name:startswith("pup")   then set(18)  -- Puppet Roll
+elseif name:startswith("dan")   then set(19)  -- Dancer's Roll
+elseif name:startswith("sch")   then set(20)  -- Scholar's Roll
+elseif name:startswith("bol")   then set(21)  -- Bolter's Roll
+elseif name:startswith("cas")   then set(22)  -- Caster's Roll
+elseif name:startswith("cou")  	then set(23)  -- Courser's Roll
+elseif name:startswith("bli")   then set(24)  -- Blitzer's Roll
+elseif name:startswith("tac")   then set(25)  -- Tactician's Roll
+elseif name:startswith("all")   then set(26)  -- Allies' Roll
+elseif name:startswith("mis")   then set(27)  -- Miser's Roll
+elseif name:startswith("com")   then set(28)  -- Companion's Roll
+elseif name:startswith("ave")  	then set(29)  -- Avenger's Roll
+elseif name:startswith("nat") 	then set(30)  -- Naturalist's Roll
+elseif name:startswith("run")   then set(31)  -- Runeist's Roll
 end
 
 if rollchange then
@@ -1185,37 +1185,37 @@ config.save(settings)
 rollchange = true
 end
 
-if     name:startswith("warlock") or name:startswith("macc") or name:startswith("magic ac") or name:startswith("rdm") then set(5)
-elseif name:startswith("fight")   or name:startswith("double") or name:startswith("dbl") or name:startswith("war") then set(1)
-elseif name:startswith("monk")    or name:startswith("subtle") or name:startswith("mnk") then set(2)
-elseif name:startswith("heal")    or name:startswith("cure") or name:startswith("whm") then set(3)
-elseif name:startswith("wiz")     or name:startswith("matk") or name:startswith("magic at") or name:startswith("blm") then set(4)
-elseif name:startswith("rogue")   or name:startswith("crit") or name:startswith("thf") then set(6)
-elseif name:startswith("gallant") or name:startswith("def") or name:startswith("pld") then set(7)
-elseif name:startswith("chaos")   or name:startswith("attack") or name:startswith("atk") or name:startswith("drk") then set(8)
-elseif name:startswith("beast")   or name:startswith("pet at") or name:startswith("bst") then set(9)
-elseif name:startswith("choral")  or name:startswith("inter") or name:startswith("spell inter") or name:startswith("brd") then set(10)
-elseif name:startswith("hunt")    or name:startswith("acc") or name:startswith("rng") then set(11)
-elseif name:startswith("sam")     or name:startswith("stp") or name:startswith("store") then set(12)
-elseif name:startswith("nin")     or name:startswith("eva") then set(13)
-elseif name:startswith("drach")   or name:startswith("pet ac") or name:startswith("drg") then set(14)
-elseif name:startswith("evoke")   or name:startswith("refresh") or name:startswith("smn") then set(15)
-elseif name:startswith("magus")   or name:startswith("mdb") or name:startswith("magic d") or name:startswith("blu") then set(16)
-elseif name:startswith("cor")     or name:startswith("exp") then set(17)
-elseif name:startswith("pup")     or name:startswith("pet m") then set(18)
-elseif name:startswith("dance")   or name:startswith("regen") or name:startswith("dnc") then set(19)
-elseif name:startswith("sch")     or name:startswith("conserve m") then set(20)
-elseif name:startswith("bolt")    or name:startswith("move") or name:startswith("flee") or name:startswith("speed") then set(21)
-elseif name:startswith("cast")    or name:startswith("fast") or name:startswith("fc") then set(22)
-elseif name:startswith("course")  or name:startswith("snap") then set(23)
-elseif name:startswith("blitz")   or name:startswith("delay") then set(24)
-elseif name:startswith("tact")    or name:startswith("regain") then set(25)
-elseif name:startswith("all")     or name:startswith("skillchain") then set(26)
-elseif name:startswith("miser")   or name:startswith("save tp") or name:startswith("conserve t") then set(27)
-elseif name:startswith("comp")    or name:startswith("pet r") then set(28)
-elseif name:startswith("avenge")  or name:startswith("counter") then set(29)
-elseif name:startswith("natural") or name:startswith("enhance") or name:startswith("duration") then set(30)
-elseif name:startswith("run")     or name:startswith("meva") or name:startswith("magic e") then set(31)
+if     name:startswith("fig")	then set(1)   -- Fighter's Roll
+elseif name:startswith("mon")   then set(2)   -- Monk's Roll
+elseif name:startswith("hea")   then set(3)   -- Healer's Roll
+elseif name:startswith("wiz")   then set(4)   -- Wizard's Roll
+elseif name:startswith("war")	then set(5)   -- Warlock's Roll
+elseif name:startswith("rog")   then set(6)   -- Rogue's Roll
+elseif name:startswith("gal") 	then set(7)   -- Gallant's Roll
+elseif name:startswith("cha")   then set(8)   -- Chaos Roll
+elseif name:startswith("bea")   then set(9)   -- Beast Roll
+elseif name:startswith("cho")  	then set(10)  -- Choral Roll
+elseif name:startswith("hun")   then set(11)  -- Hunter's Roll
+elseif name:startswith("sam")   then set(12)  -- Samurai Roll
+elseif name:startswith("nin")   then set(13)  -- Ninja Roll
+elseif name:startswith("dra")   then set(14)  -- Drachen Roll
+elseif name:startswith("evo")   then set(15)  -- Evoker's Roll
+elseif name:startswith("mag")   then set(16)  -- Magus Roll
+elseif name:startswith("cor")   then set(17)  -- Corsair's Roll
+elseif name:startswith("pup")   then set(18)  -- Puppet Roll
+elseif name:startswith("dan")   then set(19)  -- Dancer's Roll
+elseif name:startswith("sch")   then set(20)  -- Scholar's Roll
+elseif name:startswith("bol")   then set(21)  -- Bolter's Roll
+elseif name:startswith("cas")   then set(22)  -- Caster's Roll
+elseif name:startswith("cou")  	then set(23)  -- Courser's Roll
+elseif name:startswith("bli")   then set(24)  -- Blitzer's Roll
+elseif name:startswith("tac")   then set(25)  -- Tactician's Roll
+elseif name:startswith("all")   then set(26)  -- Allies' Roll
+elseif name:startswith("mis")   then set(27)  -- Miser's Roll
+elseif name:startswith("com")   then set(28)  -- Companion's Roll
+elseif name:startswith("ave")  	then set(29)  -- Avenger's Roll
+elseif name:startswith("nat") 	then set(30)  -- Naturalist's Roll
+elseif name:startswith("run")   then set(31)  -- Runeist's Roll
 end
 
 if rollchange then
