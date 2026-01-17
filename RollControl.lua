@@ -999,7 +999,7 @@ local last = lastJobBonusAnnounce[rollid] or 0
 if now - last >= 60 then
 lastJobBonusAnnounce[rollid] = now
 local jobUpper = effectiveJob:upper()
-windower.add_to_chat(17, string.format('[Roll Control] %s job bonus applied to %s Roll', jobUpper, rollInfo[rollid][1]))
+windower.add_to_chat(208, string.format('[Roll Control] %s job bonus applied to %s Roll', jobUpper, rollInfo[rollid][1]))
 end
 end
 end
