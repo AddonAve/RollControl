@@ -91,6 +91,7 @@ rollPlusStepCache = {}
 lastJobBonusAnnounce = {}
 
 local remoteRollPlus = 0
+local was_dead = false
 
 --------------------------------------------------------------------------------
 -- Job Detection
@@ -465,6 +466,31 @@ end
 
 displayBox:show()
 end
+
+-- Disable automatic rolling when dead
+windower.register_event('prerender', function()
+local p = windower.ffxi.get_player()
+if not p or not p.vitals then return end
+
+-- Detect death
+if p.vitals.hp == 0 then
+if autoroll and not was_dead then
+autoroll = false
+midRoll = false
+crookedPending = false
+lastRoll = 0
+lastRollCrooked = false
+isLucky = false
+
+update_displaybox()
+end
+was_dead = true
+return
+end
+
+-- Reset flag after raise
+was_dead = false
+end)
 
 -- Hide or show display on zoning packets
 windower.register_event('outgoing chunk', function(id, data)
@@ -973,7 +999,7 @@ local last = lastJobBonusAnnounce[rollid] or 0
 if now - last >= 60 then
 lastJobBonusAnnounce[rollid] = now
 local jobUpper = effectiveJob:upper()
-windower.add_to_chat(207, string.format('[Auto Roller] %s job bonus applied to %s Roll', jobUpper, rollInfo[rollid][1]))
+windower.add_to_chat(17, string.format('[Roll Control] %s job bonus applied to %s Roll', jobUpper, rollInfo[rollid][1]))
 end
 end
 end
