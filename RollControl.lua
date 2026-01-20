@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.name = 'RollControl'
 _addon.version = '1.2.0'
 _addon.author = 'Addon Ave'
-_addon.commands = {'rollcontrol','rc'}
+_addon.commands = {'rc'}
 
 require('logger')
 require('luau')
