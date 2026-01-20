@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
 
 _addon.name = 'RollControl'
-_addon.version = '1.0.0'
+_addon.version = '1.2.0'
 _addon.author = 'Addon Ave'
 _addon.commands = {'rollcontrol','rc'}
 
@@ -1394,7 +1394,7 @@ end
 end)
 
 --------------------------------------------------------------------------------
--- Reset on Job or Zone Change
+-- Job change, zone change
 --------------------------------------------------------------------------------
 
 windower.register_event('job change', function()
