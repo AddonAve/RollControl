@@ -94,7 +94,7 @@ local remoteRollPlus = 0
 local was_dead = false
 
 --------------------------------------------------------------------------------
--- Job Detection
+-- Job detection
 --------------------------------------------------------------------------------
 
 local jobIdMap = {
@@ -123,7 +123,7 @@ run = 22,
 }
 
 --------------------------------------------------------------------------------
--- Packet-based Party Job Tracker (main job only)
+-- Packet-based party job tracker (main job only)
 --------------------------------------------------------------------------------
 
 partyJobs = {}
@@ -241,7 +241,7 @@ return false
 end
 
 --------------------------------------------------------------------------------
--- Gear Helpers
+-- Gear helpers
 --------------------------------------------------------------------------------
 
 local function getGear(slot)
@@ -255,7 +255,7 @@ return 0
 end
 
 --------------------------------------------------------------------------------
--- Load-time Initialization
+-- Load-time initialization
 --------------------------------------------------------------------------------
 
 windower.register_event('load', function()
@@ -364,7 +364,7 @@ rollPlusStepCache = {}
 end)
 
 --------------------------------------------------------------------------------
--- Buff Helper
+-- Buff helper
 --------------------------------------------------------------------------------
 
 function haveBuff(...)
@@ -395,7 +395,7 @@ Cities = S{
 }
 
 --------------------------------------------------------------------------------
--- Display Box
+-- Display box
 --------------------------------------------------------------------------------
 
 function create_display(settings)
@@ -514,7 +514,7 @@ end
 end)
 
 --------------------------------------------------------------------------------
--- RollControl Logic
+-- RollControl logic
 --------------------------------------------------------------------------------
 
 function doRoll()
@@ -658,7 +658,7 @@ return new, color
 end)
 
 --------------------------------------------------------------------------------
--- Double-Up Stopper + Fold Logic
+-- Double-Up and Fold
 --------------------------------------------------------------------------------
 
 windower.register_event('outgoing text', function(original, modified)
@@ -700,11 +700,11 @@ return modified
 end)
 
 --------------------------------------------------------------------------------
--- Display + Auto Double-Up Logic
+-- Phantom Roll detection
 --------------------------------------------------------------------------------
 
 windower.register_event('action', function(act)
--- Only interested in Phantom Roll actions (category 6) that are in rollInfo
+-- Only interested in Phantom Roll actions that are in rollInfo
 if act.category ~= 6 or not table.containskey(rollInfo, act.param) then
 return
 end
@@ -714,7 +714,7 @@ local rollNum = act.targets[1].actions[1].param
 local actor = act.actor_id
 
 --------------------------------------------------------------------------------
--- Lucky and Bust Info
+-- Lucky and Bust info
 --------------------------------------------------------------------------------
 
 local function player_in_targets(a)
@@ -823,7 +823,7 @@ end
 end
 
 --------------------------------------------------------------------------------
--- Crooked Cards / Double-Up / Snake Eye Tracking
+-- Crooked Cards / Double-Up / Snake Eye
 --------------------------------------------------------------------------------
 
 -- Ignore Phantom Roll used by trusts
@@ -977,7 +977,7 @@ end
 end
 
 --------------------------------------------------------------------------------
--- Job Bonus
+-- Job bonus
 --------------------------------------------------------------------------------
 
 local jobInfo = rollInfo[rollid][18]
@@ -1394,7 +1394,7 @@ end
 end)
 
 --------------------------------------------------------------------------------
--- Job change, zone change
+-- Job change / Zone change
 --------------------------------------------------------------------------------
 
 windower.register_event('job change', function()
