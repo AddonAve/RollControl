@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
 
 _addon.name = 'RollControl'
-_addon.version = '1.2.0'
+_addon.version = '1.3.0'
 _addon.author = 'Addon Ave'
 _addon.commands = {'rc'}
 
@@ -92,6 +92,11 @@ lastJobBonusAnnounce = {}
 
 local remoteRollPlus = 0
 local was_dead = false
+
+-- Prevent duplicate Double-Up command queues for the same roll result
+local du_guard_until = 0
+local du_guard_rollID = 0
+local du_guard_rollNum = 0
 
 --------------------------------------------------------------------------------
 -- Job detection
@@ -860,17 +865,30 @@ if player_now.main_job == 'COR' then
 local abil_recasts = windower.ffxi.get_ability_recasts()
 local available_ja = S(windower.ffxi.get_abilities().job_abilities)
 
+-- If we get duplicate Phantom Roll action packets for the same roll result,
+-- don't queue Double-Up twice (prevents double-bust).
+local now_clock = os.clock()
+if rollID == du_guard_rollID and rollNum == du_guard_rollNum and now_clock < du_guard_until then
+return
+end
+
 -- Snake Eye: 10 or (Lucky -1) or specific threshold
 local snakeReady   = abil_recasts[197] == 0
 local doubleReady  = abil_recasts[195] == 0
 
 if available_ja:contains(177) and snakeReady and doubleReady and rollNum == 10 then
 midRoll = true
+du_guard_rollID = rollID
+du_guard_rollNum = rollNum
+du_guard_until  = now_clock + 1.0
 windower.send_command('wait 1.2;input /ja "Snake Eye" <me>;wait 4.4;input /ja "Double-Up" <me>')
 
 elseif available_ja:contains(177) and snakeReady and doubleReady
 and rollNum == (rollInfo[rollID][15] - 1) then
 midRoll = true
+du_guard_rollID = rollID
+du_guard_rollNum = rollNum
+du_guard_until  = now_clock + 1.0
 windower.send_command('wait 1.2;input /ja "Snake Eye" <me>;wait 4.4;input /ja "Double-Up" <me>')
 
 elseif available_ja:contains(177) and snakeReady and doubleReady
@@ -878,15 +896,24 @@ and lastRoll ~= 11
 and rollNum > 6
 and rollNum == rollInfo[rollID][16] then
 midRoll = true
+du_guard_rollID = rollID
+du_guard_rollNum = rollNum
+du_guard_until  = now_clock + 1.0
 windower.send_command('wait 1.2;input /ja "Snake Eye" <me>;wait 4.4;input /ja "Double-Up" <me>')
 
 -- Plain Double-Up (no Snake Eye): still require Double-Up recast ready
 elseif doubleReady and not lastRollCrooked and rollNum < 9 then
 midRoll = true
+du_guard_rollID = rollID
+du_guard_rollNum = rollNum
+du_guard_until  = now_clock + 1.0
 windower.send_command('wait 4.4;input /ja "Double-Up" <me>')
 
 elseif doubleReady and (rollNum < 6 or lastRoll == 8) and not lastRollCrooked then
 midRoll = true
+du_guard_rollID = rollID
+du_guard_rollNum = rollNum
+du_guard_until  = now_clock + 1.0
 windower.send_command('wait 4.4;input /ja "Double-Up" <me>')
 
 else
@@ -1114,7 +1141,7 @@ isLucky = false
 
 if not autoroll then
 autoroll = true
-windower.add_to_chat(7, 'Enabling Automatic Rolling')
+windower.add_to_chat(18, 'Enabling Automatic Rolling')
 end
 update_displaybox()
 return
@@ -1124,7 +1151,7 @@ if sub == "off" then
 zonedelay = 2
 if autoroll then
 autoroll = false
-windower.add_to_chat(7, 'Disabling Automatic Rolling')
+windower.add_to_chat(18, 'Disabling Automatic Rolling')
 end
 update_displaybox()
 return
@@ -1136,7 +1163,7 @@ local which = "Roll 1"
 local key = "Roll_ind_1"
 
 if not cmd[2] then
-windower.add_to_chat(7, which..": "..rollIndex[settings[key]])
+windower.add_to_chat(18, which..": "..rollIndex[settings[key]])
 return
 end
 
@@ -1183,9 +1210,9 @@ elseif name:startswith("run")   then set(31)  -- Runeist's Roll
 end
 
 if rollchange then
-windower.add_to_chat(7, 'Setting '..which..' to: '..rollIndex[settings[key]])
+windower.add_to_chat(18, 'Setting '..which..' to: '..rollIndex[settings[key]])
 else
-windower.add_to_chat(7, 'Invalid roll name, '..which..' remains: '..rollIndex[settings[key]])
+windower.add_to_chat(18, 'Invalid roll name, '..which..' remains: '..rollIndex[settings[key]])
 end
 
 update_displaybox()
@@ -1198,7 +1225,7 @@ local which = "Roll 2"
 local key = "Roll_ind_2"
 
 if not cmd[2] then
-windower.add_to_chat(7, which..": "..rollIndex[settings[key]])
+windower.add_to_chat(18, which..": "..rollIndex[settings[key]])
 return
 end
 
@@ -1245,9 +1272,9 @@ elseif name:startswith("run")   then set(31)  -- Runeist's Roll
 end
 
 if rollchange then
-windower.add_to_chat(7, 'Setting '..which..' to: '..rollIndex[settings[key]])
+windower.add_to_chat(18, 'Setting '..which..' to: '..rollIndex[settings[key]])
 else
-windower.add_to_chat(7, 'Invalid roll name, '..which..' remains: '..rollIndex[settings[key]])
+windower.add_to_chat(18, 'Invalid roll name, '..which..' remains: '..rollIndex[settings[key]])
 end
 
 update_displaybox()
@@ -1257,18 +1284,18 @@ end
 -- Crooked Cards
 if sub == "cc" then
 if not cmd[2] then
-windower.add_to_chat(7, 'Crooked Cards: '..(settings.crooked and 'On' or 'Off'))
+windower.add_to_chat(18, 'Crooked Cards: '..(settings.crooked and 'On' or 'Off'))
 return
 end
 
 if cmd[2] == "on" then
 settings.crooked = true
-windower.add_to_chat(7, 'Crooked Cards: On')
+windower.add_to_chat(18, 'Crooked Cards: On')
 elseif cmd[2] == "off" then
 settings.crooked = false
-windower.add_to_chat(7, 'Crooked Cards: Off')
+windower.add_to_chat(18, 'Crooked Cards: Off')
 else
-windower.add_to_chat(7, 'Not a recognized command (use on/off)')
+windower.add_to_chat(18, 'Not a recognized command (use on/off)')
 end
 
 config.save(settings)
@@ -1279,15 +1306,15 @@ end
 if sub == "holdtp" then
 if not cmd[2] then
 settings.holdtp = not settings.holdtp
-windower.add_to_chat(7,'Hold TP: ' .. (settings.holdtp and 'On' or 'Off'))
+windower.add_to_chat(18,'Hold TP: ' .. (settings.holdtp and 'On' or 'Off'))
 elseif cmd[2] == 'on' then
 settings.holdtp = true
-windower.add_to_chat(7, 'Hold TP: On')
+windower.add_to_chat(18, 'Hold TP: On')
 elseif cmd[2] == 'off' then
 settings.holdtp = false
-windower.add_to_chat(7, 'Hold TP: Off')
+windower.add_to_chat(18, 'Hold TP: Off')
 else
-windower.add_to_chat(7, 'Not a recognized command (use on/off)')
+windower.add_to_chat(18, 'Not a recognized command (use on/off)')
 end
 
 config.save(settings)
@@ -1299,8 +1326,8 @@ end
 -- Roll+ potency (for the COR in your party)
 if sub == "rollplus" then
 if not cmd[2] then
-windower.add_to_chat(7, string.format('Roll+ potency: %d', remoteRollPlus or 0))
-windower.add_to_chat(7, 'Valid Roll+ potency: 0|3|5|6|7|8')
+windower.add_to_chat(18, string.format('Roll+ potency: %d', remoteRollPlus or 0))
+windower.add_to_chat(18, 'Valid Roll+ potency: 0|3|5|6|7|8')
 return
 end
 
@@ -1312,7 +1339,7 @@ end
 -- Only allow the real Roll+ amounts
 local valid = S{0,3,5,6,7,8}
 if not valid:contains(n) then
-windower.add_to_chat(7, 'Invalid Roll+ potency')
+windower.add_to_chat(18, 'Invalid Roll+ potency')
 return
 end
 
@@ -1321,9 +1348,9 @@ settings.remote_roll_plus = n
 config.save(settings)
 
 if n == 0 then
-windower.add_to_chat(7, 'Roll+ disabled')
+windower.add_to_chat(18, 'Roll+ disabled')
 else
-windower.add_to_chat(7, string.format('Roll+ potency set to: %d', n))
+windower.add_to_chat(18, string.format('Roll+ potency set to: %d', n))
 end
 return
 end
@@ -1332,15 +1359,15 @@ end
 if sub == "display" then
 if not cmd[2] then
 settings.showdisplay = not settings.showdisplay
-windower.add_to_chat(7, 'Display: '..(settings.showdisplay and 'On' or 'Off'))
+windower.add_to_chat(18, 'Display: '..(settings.showdisplay and 'On' or 'Off'))
 elseif cmd[2] == 'on' or cmd[2] == 'show' then
 settings.showdisplay = true
-windower.add_to_chat(7, 'Display: On')
+windower.add_to_chat(18, 'Display: On')
 elseif cmd[2] == 'off' or cmd[2] == 'hide' then
 settings.showdisplay = false
-windower.add_to_chat(7, 'Display: Off')
+windower.add_to_chat(18, 'Display: Off')
 else
-windower.add_to_chat(7, 'Not a recognized command (use on/off)')
+windower.add_to_chat(18, 'Not a recognized command (use on/off)')
 end
 
 config.save(settings)
@@ -1356,15 +1383,15 @@ end
 if sub == "engaged" then
 if not cmd[2] then
 settings.engaged = not settings.engaged
-windower.add_to_chat(7, 'Engaged Mode: '..(settings.engaged and 'On' or 'Off'))
+windower.add_to_chat(18, 'Engaged Mode: '..(settings.engaged and 'On' or 'Off'))
 elseif cmd[2] == 'on' or cmd[2] == 'true' then
 settings.engaged = true
-windower.add_to_chat(7, 'Engaged Mode: On')
+windower.add_to_chat(18, 'Engaged Mode: On')
 elseif cmd[2] == 'off' or cmd[2] == 'false' then
 settings.engaged = false
-windower.add_to_chat(7, 'Engaged Mode: Off')
+windower.add_to_chat(18, 'Engaged Mode: Off')
 else
-windower.add_to_chat(7, 'Not a recognized command (use on/off)')
+windower.add_to_chat(18, 'Not a recognized command (use on/off)')
 end
 config.save(settings)
 update_displaybox()
@@ -1372,23 +1399,23 @@ return
 end
 
 if sub == "status" then
-windower.add_to_chat(7,'[RollControl] Status:')
-windower.add_to_chat(7, 'Crooked Cards: ' .. (settings.crooked and 'On' or 'Off'))
-windower.add_to_chat(7, 'Roll+ potency (not self): ' .. (settings.remote_roll_plus or 0))
+windower.add_to_chat(18,'[RollControl] Status:')
+windower.add_to_chat(18, 'Crooked Cards: ' .. (settings.crooked and 'On' or 'Off'))
+windower.add_to_chat(18, 'Roll+ potency (not self): ' .. (settings.remote_roll_plus or 0))
 return
 end
 
 if sub == "help" then
-windower.add_to_chat(208,'[RollControl] Commands:')
-windower.add_to_chat(208,' //rc on|off - Enable/Disable')
-windower.add_to_chat(208,' //rc roll1 [name] - Set Roll #1')
-windower.add_to_chat(208,' //rc roll2 [name] - Set Roll #2')
-windower.add_to_chat(208,' //rc cc on|off - Crooked Cards on/off')
-windower.add_to_chat(208,' //rc holdtp on|off - Hold TP on/off')
-windower.add_to_chat(208,' //rc rollplus 0|3|5|6|7|8 - Set the COR roll+ potency (not self)')
-windower.add_to_chat(208,' //rc display on|off - Display on/off')
-windower.add_to_chat(208,' //rc engaged on|off - Rolls only when engaged')
-windower.add_to_chat(208,' //rc status - Show current status')
+windower.add_to_chat(2,'[RollControl] Commands:')
+windower.add_to_chat(2,' //rc on|off - Enable/Disable')
+windower.add_to_chat(2,' //rc roll1 [name] - Set Roll #1')
+windower.add_to_chat(2,' //rc roll2 [name] - Set Roll #2')
+windower.add_to_chat(2,' //rc cc on|off - Crooked Cards on/off')
+windower.add_to_chat(2,' //rc holdtp on|off - Hold TP on/off')
+windower.add_to_chat(2,' //rc rollplus 0|3|5|6|7|8 - Set the COR roll+ potency (not self)')
+windower.add_to_chat(2,' //rc display on|off - Display on/off')
+windower.add_to_chat(2,' //rc engaged on|off - Rolls only when engaged')
+windower.add_to_chat(2,' //rc status - Show current status')
 return
 end
 end)
