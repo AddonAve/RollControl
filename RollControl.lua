@@ -620,17 +620,6 @@ end
 doRoll:loop(4)
 
 --------------------------------------------------------------------------------
--- Text override
---------------------------------------------------------------------------------
-
-windower.register_event('outgoing text', function(text)
-if text:lower() == '/invisible' then
-windower.send_command('input /ma "Invisible" <me>')
-return true
-end
-end)
-
---------------------------------------------------------------------------------
 -- Text filters
 --------------------------------------------------------------------------------
 
@@ -679,10 +668,14 @@ end)
 --------------------------------------------------------------------------------
 
 windower.register_event('outgoing text', function(original, modified)
-local cleaned = windower.convert_auto_trans(original)
-modified = original
+modified = modified or original
+local cleaned = windower.convert_auto_trans(modified)
 
--- Track Crooked Cards usage (sets flag for the *next* roll)
+if cleaned and cleaned:lower() == '/invisible' then
+return '/ma "Invisible" <me>'
+end
+
+-- Track Crooked Cards usage (sets flag for the next roll)
 if cleaned:match('/jobability \"?Crooked Cards') or cleaned:match('/ja \"?Crooked Cards') then
 crookedPending = true
 end
