@@ -906,6 +906,12 @@ du_guard_rollNum = rollNum
 du_guard_until  = now_clock + 1.0
 windower.send_command('wait 1.2;input /ja "Snake Eye" <me>;wait 4.4;input /ja "Double-Up" <me>')
 
+if rollNum >= 8 then
+midRoll = false
+lastRoll = rollNum
+return
+end
+
 -- Plain Double-Up (no Snake Eye): still require Double-Up recast ready
 elseif doubleReady and not lastRollCrooked and rollNum < 9 then
 midRoll = true
