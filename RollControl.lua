@@ -27,12 +27,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
 
 _addon.name = 'RollControl'
-_addon.version = '1.3.0'
+_addon.version = '1.4.0'
 _addon.author = 'Addon Ave'
 _addon.commands = {'rc'}
 
 require('logger')
-require('luau')
+require('sets')
+config = require('config')
 chat = require('chat')
 chars = require('chat.chars')
 packets = require('packets')
@@ -174,7 +175,7 @@ local p = packets.parse('incoming', data)
 if not p then
 return
 end
--- 0x0DD / 0x0DF: single actor update
+-- 0x0DD/0x0DF: single actor update
 if id == 0x0DD or id == 0x0DF then
 local mob_id = p.ID or p['ID'] or p['Mob ID']
 local job = p['Main job'] or p['Main Job'] or p['Job'] or p['Main Job ID']
@@ -311,7 +312,7 @@ local rollTable = {
 ['Blitzer\'s']    = {2,3,4,11,5,6,7,8,1,19,12, '-3', '% Delay reduction', 4, 9, 1, {nil,0}, {4, 11080, 26772, 26773, 23101, 23436, 5}},
 ['Bolter\'s']     = {6,6,16,8,8,10,10,12,4,14,20, '0', '% Movement Speed', 3, 9, 4, {nil,0}},
 ['Caster\'s']     = {6,15,7,8,9,10,5,11,12,13,20, '-10', '% Fast Cast', 2, 7, 3, {nil,0}, {7, 11140, 27269, 27269, 10}},
-['Chaos']         = {64,80,96,256,112,128,160,32,176,192,320, '-9.76', '% Attack / Ranged Attack', 4, 8, 32, {'drk',100}, {nil,0}},
+['Chaos']         = {64,80,96,256,112,128,160,32,176,192,320, '-9.76', '% Attack/Ranged Attack', 4, 8, 32, {'drk',100}, {nil,0}},
 ['Choral']        = {-8,-42,-11,-15,-19,-4,-23,-27,-31,-35,-50, '+25', '% Spell Interruption Rate', 2, 6, 4, {'brd',-25}, {nil,0}},
 ['Companion\'s']  = {{20,4},{50,20},{20,6},{20,8},{30,10},{30,12},{30,14},{40,16},{40,18},{10,3},{70,30}, '0', ' Pet: Regain/Regen', 2, 10, {5,2}, {nil,0}},
 ['Corsair\'s']    = {10,11,11,12,20,13,15,16,8,17,24, '-6', '% Experience Bonus', 5, 9, 2, {'cor',5}, {nil,0}},
@@ -322,7 +323,7 @@ local rollTable = {
 ['Fighter\'s']    = {1,2,3,4,10,5,6,6,1,7,15, '0', '% Double Attack', 5, 9, 1, {'war',5}, {nil,0}},
 ['Gallant\'s']    = {48,60,200,72,88,104,32,120,140,160,240, '-11.72', '% Defense Bonus', 3, 7, 24, {'pld',120}, {nil,0}},
 ['Healer\'s']     = {3,4,12,5,6,7,1,8,9,10,16, '-4', '% Cure Potency Received', 3, 7, 1, {'whm',4}, {nil,0}},
-['Hunter\'s']     = {10,13,15,40,18,20,25,5,27,30,50, '-15', ' Accuracy / Ranged Accuracy', 4, 8, 5, {'rng',15}, {nil,0}},
+['Hunter\'s']     = {10,13,15,40,18,20,25,5,27,30,50, '-15', ' Accuracy/Ranged Accuracy', 4, 8, 5, {'rng',15}, {nil,0}},
 ['Magus\'s']      = {5,20,6,8,9,3,10,13,14,15,25, '-8', ' Magic Defense Bonus', 2, 6, 2, {'blu',8}, {nil,0}},
 ['Miser\'s']      = {30,50,70,90,200,110,20,130,150,170,250, '0', ' Save TP', 5, 7, 15, {nil,0}},
 ['Monk\'s']       = {8,10,32,12,14,15,4,20,22,24,40, '-10', ' Subtle Blow', 3, 7, 4, {'mnk',10}, {nil,0}},
@@ -505,7 +506,7 @@ end
 end)
 
 windower.register_event('incoming chunk', function(id, data)
--- Display hide / show
+-- Display hide/show
 if id == 0x00A and displayBox then
 displayBox:show()
 end
@@ -534,7 +535,7 @@ midRoll = false
 crookedPending = false
 return
 end
--- Sneak / Invisible suspend
+-- Sneak/Invisible suspend
 if haveBuff('Sneak') or haveBuff('Invisible') then
 stealthy = true
 else
@@ -619,7 +620,18 @@ end
 doRoll:loop(4)
 
 --------------------------------------------------------------------------------
--- Text Filters
+-- Text override
+--------------------------------------------------------------------------------
+
+windower.register_event('outgoing text', function(text)
+if text:lower() == '/invisible' then
+windower.send_command('input /ma "Invisible" <me>')
+return true
+end
+end)
+
+--------------------------------------------------------------------------------
+-- Text filters
 --------------------------------------------------------------------------------
 
 windower.register_event('incoming text', function(old, new, color)
@@ -828,7 +840,7 @@ end
 end
 
 --------------------------------------------------------------------------------
--- Crooked Cards / Double-Up / Snake Eye
+-- Crooked Cards/Double-Up/Snake Eye
 --------------------------------------------------------------------------------
 
 -- Ignore Phantom Roll used by trusts
@@ -929,7 +941,7 @@ end
 end)
 
 --------------------------------------------------------------------------------
--- RollEffect / BustRate / ReportRollInfo
+-- RollEffect/BustRate/ReportRollInfo
 --------------------------------------------------------------------------------
 
 function RollEffect(rollid, rollnum, crookedApplied)
@@ -1033,7 +1045,7 @@ end
 end
 
 --------------------------------------------------------------------------------
--- Empyrean +2 / 109 / 119 gear bonus
+-- Empyrean +2/109/119 gear bonus
 --------------------------------------------------------------------------------
 
 local gearInfo = rollInfo[rollid][19]
@@ -1064,17 +1076,17 @@ rollVal = rollVal * 1.20
 end
 
 --------------------------------------------------------------------------------
--- Special Conversions
+-- Special conversions
 --------------------------------------------------------------------------------
 
 -- Bolter's: convert internal to % move speed
 if rollName == "Bolter\'s" then
-rollVal = '%.0f':format(100 * ((5 + rollVal) / 5 - 1))
+rollVal = '%.0f':format(100 * ((5 + rollVal)/5 - 1))
 end
 
 -- Chaos/Gallant's/Beast: convert internal units to %
 if rollName == "Beast" or rollName == "Chaos" or rollName == "Gallant\'s" then
-rollVal = '%.2f':format(rollVal / 1024 * 100)
+rollVal = '%.2f':format(rollVal/1024 * 100)
 end
 
 return rollVal .. rollInfo[rollid][14]
@@ -1421,7 +1433,7 @@ end
 end)
 
 --------------------------------------------------------------------------------
--- Job change / Zone change
+-- Job change
 --------------------------------------------------------------------------------
 
 windower.register_event('job change', function()
@@ -1435,6 +1447,10 @@ isLucky = false
 rollPlusStepCache = {}
 update_displaybox()
 end)
+
+--------------------------------------------------------------------------------
+-- Zone change
+--------------------------------------------------------------------------------
 
 windower.register_event('zone change', function()
 zonedelay = 0
