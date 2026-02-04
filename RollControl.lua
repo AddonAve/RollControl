@@ -682,6 +682,12 @@ end
 
 -- Stop Double-Up on Lucky unless confirmed
 if cleaned:match('/jobability \"?Double.*Up') or cleaned:match('/ja \"?Double.*Up') then
+-- Hard Stop: never queue Double-Up once we've hit 8+
+if lastRoll and lastRoll >= 8 then
+modified = ""
+return modified
+end
+
 if isLucky and settings.autostop and player and player.id == (player.id or 0) then
 windower.add_to_chat(159, 'Attempting to Doubleup on a Lucky Roll: Re-double up to continue')
 isLucky = false
@@ -870,8 +876,7 @@ if player_now.main_job == 'COR' then
 local abil_recasts = windower.ffxi.get_ability_recasts()
 local available_ja = S(windower.ffxi.get_abilities().job_abilities)
 
--- If we get duplicate Phantom Roll action packets for the same roll result,
--- don't queue Double-Up twice (prevents double-bust).
+-- If we get duplicate Phantom Roll action packets for the same roll result, don't queue Double-Up twice.
 local now_clock = os.clock()
 if rollID == du_guard_rollID and rollNum == du_guard_rollNum and now_clock < du_guard_until then
 return
@@ -880,6 +885,16 @@ end
 -- Snake Eye: 10 or (Lucky -1) or specific threshold
 local snakeReady   = abil_recasts[197] == 0
 local doubleReady  = abil_recasts[195] == 0
+
+-- Hard Stop: never queue Double-Up once we've hit 8+
+if lastRoll and lastRoll >= 8 then
+return
+end
+if rollNum >= 8 then
+midRoll = false
+lastRoll = rollNum
+return
+end
 
 if available_ja:contains(177) and snakeReady and doubleReady and rollNum == 10 then
 midRoll = true
@@ -905,12 +920,6 @@ du_guard_rollID = rollID
 du_guard_rollNum = rollNum
 du_guard_until  = now_clock + 1.0
 windower.send_command('wait 1.2;input /ja "Snake Eye" <me>;wait 4.4;input /ja "Double-Up" <me>')
-
-if rollNum >= 8 then
-midRoll = false
-lastRoll = rollNum
-return
-end
 
 -- Plain Double-Up (no Snake Eye): still require Double-Up recast ready
 elseif doubleReady and not lastRollCrooked and rollNum < 9 then
@@ -1037,7 +1046,7 @@ local last = lastJobBonusAnnounce[rollid] or 0
 if now - last >= 60 then
 lastJobBonusAnnounce[rollid] = now
 local jobUpper = effectiveJob:upper()
-windower.add_to_chat(208, string.format('[RollControl] %s job bonus applied to %s Roll', jobUpper, rollInfo[rollid][1]))
+windower.add_to_chat(1, string.format('[RollControl] %s job bonus applied to %s Roll', jobUpper, rollInfo[rollid][1]))
 end
 end
 end
@@ -1067,7 +1076,7 @@ end
 end
 
 --------------------------------------------------------------------------------
--- Crooked Cards bonus (+20% effect when applied to this roll)
+-- Crooked Cards bonus
 --------------------------------------------------------------------------------
 
 if crookedApplied and type(rollVal) == 'number' then
