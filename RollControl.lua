@@ -886,11 +886,11 @@ end
 local snakeReady   = abil_recasts[197] == 0
 local doubleReady  = abil_recasts[195] == 0
 
--- Hard Stop: never queue Double-Up once we've hit 8+
-if lastRoll and lastRoll >= 8 then
+-- Hard Stop: never queue Double-Up once we've hit roll of 7+
+if lastRoll and lastRoll >= 7 then
 return
 end
-if rollNum >= 8 then
+if rollNum >= 7 then
 midRoll = false
 lastRoll = rollNum
 return
