@@ -808,15 +808,8 @@ end
 if rollInfo[rollID][1] == "Choral" and vnum then
 val = -math.abs(vnum)
 end
-
-windower.add_to_chat(
-1,
-string.char(31,167)..
-amountHit..'Bust! '..chat.controls.reset..
-chars.implies..' '..membersHit..' '..chars.implies..
-' ('..val..rollInfo[rollID][14]..')'
-)
-
+-- Arrow
+windower.add_to_chat(1, string.char(31,167)..amountHit..'Bust! '..chat.controls.reset..chars.implies..' '..membersHit..' '..chars.implies..' ('..val..rollInfo[rollID][14]..')')
 else
 -- Add "+" for positive bonuses, but leave negatives as is
 local bonusText   = tostring(rollBonus)
@@ -826,15 +819,12 @@ local bonusPrefix = ''
 if not bonusText:match('^%-') then
 bonusPrefix = '+'
 end
-
-windower.add_to_chat(
-1,
-amountHit..membersHit..chat.controls.reset..' '..chars.implies..' '..
+-- Arrow
+windower.add_to_chat(1, amountHit..membersHit..chat.controls.reset..' '..chars.implies..' '..
 rollInfo[rollID][1]..' Roll '..chars['circle' .. rollNum]..
 luckChat..string.char(31,13)..' ('..bonusPrefix..bonusText..')'..
 BustRate(rollNum, actor)..
-ReportRollInfo(rollID, actor)
-)
+ReportRollInfo(rollID, actor))
 end
 end
 
