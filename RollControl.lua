@@ -380,7 +380,7 @@ end)
 --------------------------------------------------------------------------------
 
 function haveBuff(...)
-local args   = S{...}:map(string.lower)
+local args = S{...}:map(string.lower)
 local player = windower.ffxi.get_player()
 if player and player.buffs then
 for _, bid in pairs(player.buffs) do
@@ -520,7 +520,7 @@ end
 -- Gear tracking
 if id == 0x050 then
 local packet = packets.parse('incoming', data)
-local slot   = windower.ffxi.get_items(packet['Inventory Bag'])[packet['Inventory Index']]
+local slot = windower.ffxi.get_items(packet['Inventory Bag'])[packet['Inventory Index']]
 gearTable[packet['Equipment Slot']] = slot ~= nil and slot.id or 0
 end
 end)
@@ -610,7 +610,7 @@ and player.main_job_level > 94
 and abil_recasts[96] == 0
 then
 lastRollCrooked = true
-crookedPending  = true
+crookedPending = true
 windower.send_command('input /ja "Crooked Cards" <me>;wait 2;input /ja "'..rollIndex[settings.Roll_ind_1]..'" <me>')
 else
 lastRollCrooked = false
@@ -770,7 +770,7 @@ end
 end
 
 local membersHit = table.concat(rollMembers, ', ')
-local amountHit  = settings.effected == 1 and '[' .. #rollMembers .. '] ' or ''
+local amountHit = settings.effected == 1 and '[' .. #rollMembers .. '] ' or ''
 
 -- Check if this roll is under Crooked Cards
 local crookedApplied = false
@@ -787,7 +787,7 @@ end
 
 local rollBonus = RollEffect(rollID, rollNum + 1, crookedApplied)
 
-local luckChat   = ''
+local luckChat = ''
 
 isLucky = false
 if rollNum == rollInfo[rollID][15] or rollNum == 11 then
@@ -807,7 +807,7 @@ local vnum = tonumber(val)
 -- Crooked Cards: Bust penalty −20%
 if crookedApplied and vnum then
 vnum = vnum * 0.80
-val  = vnum
+val = vnum
 end
 
 -- If this is Choral Roll, force the number to be negative
@@ -818,7 +818,7 @@ end
 windower.add_to_chat(1, string.char(31,167)..amountHit..'Bust! '..chat.controls.reset..chars.implies..' '..membersHit..' '..chars.implies..' ('..val..rollInfo[rollID][14]..')')
 else
 -- Add "+" for positive bonuses, but leave negatives as is
-local bonusText   = tostring(rollBonus)
+local bonusText = tostring(rollBonus)
 local bonusPrefix = ''
 
 -- If it doesn't start with "-", treat it as positive and add "+"
@@ -855,7 +855,7 @@ end
 
 if rollNum == rollInfo[rollID][15] or rollNum == 11 then
 lastRoll = rollNum
-midRoll  = false
+midRoll = false
 crookedRollActive[rollID] = nil
 return
 end
@@ -888,25 +888,25 @@ local now_clock2 = os.clock()
 -- Guard against duplicate action packets producing multiple Double-Up queues
 if not (rollID == reroll_guard_rollID and rollNum == reroll_guard_rollNum and now_clock2 < reroll_guard_until) then
 -- We use the same double-up readiness check as the normal logic
-local doubleReady  = abil_recasts[195] == 0
+local doubleReady = abil_recasts[195] == 0
 if doubleReady then
 midRoll = true
 lastRoll = rollNum
 reroll_guard_rollID = rollID
 reroll_guard_rollNum = rollNum
-reroll_guard_until  = now_clock2 + 1.5
+reroll_guard_until = now_clock2 + 1.5
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
-du_guard_until  = now_clock2 + 1.5
+du_guard_until = now_clock2 + 1.5
 windower.send_command('wait 1.2;input /ja "Double-Up" <me>')
 return
 end
 end
 end
 
--- Snake Eye: 10 or (Lucky -1) or specific threshold
-local snakeReady   = abil_recasts[197] == 0
-local doubleReady  = abil_recasts[195] == 0
+-- Snake Eye: 10 or (Lucky -1)
+local snakeReady = abil_recasts[197] == 0
+local doubleReady = abil_recasts[195] == 0
 
 -- Never queue Double-Up once we've hit roll of 7 or higher
 if lastRoll and lastRoll >= 7 then
@@ -922,7 +922,7 @@ if available_ja:contains(177) and snakeReady and doubleReady and rollNum == 10 t
 midRoll = true
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
-du_guard_until  = now_clock + 1.0
+du_guard_until = now_clock + 1.0
 windower.send_command('wait 1.2;input /ja "Snake Eye" <me>;wait 4.4;input /ja "Double-Up" <me>')
 
 elseif available_ja:contains(177) and snakeReady and doubleReady
@@ -930,7 +930,7 @@ and rollNum == (rollInfo[rollID][15] - 1) then
 midRoll = true
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
-du_guard_until  = now_clock + 1.0
+du_guard_until = now_clock + 1.0
 windower.send_command('wait 1.2;input /ja "Snake Eye" <me>;wait 4.4;input /ja "Double-Up" <me>')
 
 elseif available_ja:contains(177) and snakeReady and doubleReady
@@ -940,7 +940,7 @@ and rollNum == rollInfo[rollID][16] then
 midRoll = true
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
-du_guard_until  = now_clock + 1.0
+du_guard_until = now_clock + 1.0
 windower.send_command('wait 1.2;input /ja "Snake Eye" <me>;wait 4.4;input /ja "Double-Up" <me>')
 
 -- Double-Up
@@ -948,7 +948,7 @@ elseif doubleReady and not lastRollCrooked and rollNum <= 7 then
 midRoll = true
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
-du_guard_until  = now_clock + 1.0
+du_guard_until = now_clock + 1.0
 windower.send_command('wait 4.4;input /ja "Double-Up" <me>')
 
 else
