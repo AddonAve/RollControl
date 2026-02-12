@@ -53,6 +53,7 @@ defaults.fold = 1      			-- Requires Bust or multiple rolls
 defaults.luckinfo = true   		-- Show Lucky or Unlucky info line
 defaults.engaged = false  		-- Only roll when engaged
 defaults.holdtp = false			-- Prevents rolls from being used while your TP is at least 1000
+defaults.reroll_unlucky = true	-- If you land an Unlucky total, automatically Double-Up again
 defaults.Roll_ind_1 = 8     	-- Chaos Roll
 defaults.Roll_ind_2 = 12		-- Samurai Roll
 defaults.remote_roll_plus = 7   -- COR roll+ potency (not self): 0|3|5|6|7|8
@@ -98,6 +99,11 @@ local was_dead = false
 local du_guard_until = 0
 local du_guard_rollID = 0
 local du_guard_rollNum = 0
+
+-- Prevent duplicate Unlucky-triggered Double-Up queues for the same roll result
+local reroll_guard_until = 0
+local reroll_guard_rollID = 0
+local reroll_guard_rollNum = 0
 
 --------------------------------------------------------------------------------
 -- Job detection
@@ -866,17 +872,43 @@ if player_now.main_job == 'COR' then
 local abil_recasts = windower.ffxi.get_ability_recasts()
 local available_ja = S(windower.ffxi.get_abilities().job_abilities)
 
--- If we get duplicate Phantom Roll action packets for the same roll result, don't queue Double-Up twice.
+-- If we get duplicate Phantom Roll action packets for the same roll result, don't queue Double-Up twice
 local now_clock = os.clock()
 if rollID == du_guard_rollID and rollNum == du_guard_rollNum and now_clock < du_guard_until then
 return
+end
+
+
+-- If we land the Unlucky number, immediately Double-Up again
+-- This overrides the usual "stop at 7+" safety rule so you can always roll off an Unlucky total
+if settings.reroll_unlucky
+and rollNum == rollInfo[rollID][16]
+then
+local now_clock2 = os.clock()
+-- Guard against duplicate action packets producing multiple Double-Up queues
+if not (rollID == reroll_guard_rollID and rollNum == reroll_guard_rollNum and now_clock2 < reroll_guard_until) then
+-- We use the same double-up readiness check as the normal logic
+local doubleReady  = abil_recasts[195] == 0
+if doubleReady then
+midRoll = true
+lastRoll = rollNum
+reroll_guard_rollID = rollID
+reroll_guard_rollNum = rollNum
+reroll_guard_until  = now_clock2 + 1.5
+du_guard_rollID = rollID
+du_guard_rollNum = rollNum
+du_guard_until  = now_clock2 + 1.5
+windower.send_command('wait 1.2;input /ja "Double-Up" <me>')
+return
+end
+end
 end
 
 -- Snake Eye: 10 or (Lucky -1) or specific threshold
 local snakeReady   = abil_recasts[197] == 0
 local doubleReady  = abil_recasts[195] == 0
 
--- Hard Stop: never queue Double-Up once we've hit roll of 7+
+-- Never queue Double-Up once we've hit roll of 7 or higher
 if lastRoll and lastRoll >= 7 then
 return
 end
@@ -911,15 +943,8 @@ du_guard_rollNum = rollNum
 du_guard_until  = now_clock + 1.0
 windower.send_command('wait 1.2;input /ja "Snake Eye" <me>;wait 4.4;input /ja "Double-Up" <me>')
 
--- Plain Double-Up (no Snake Eye): still require Double-Up recast ready
-elseif doubleReady and not lastRollCrooked and rollNum < 9 then
-midRoll = true
-du_guard_rollID = rollID
-du_guard_rollNum = rollNum
-du_guard_until  = now_clock + 1.0
-windower.send_command('wait 4.4;input /ja "Double-Up" <me>')
-
-elseif doubleReady and (rollNum < 6 or lastRoll == 8) and not lastRollCrooked then
+-- Double-Up
+elseif doubleReady and not lastRollCrooked and rollNum <= 7 then
 midRoll = true
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
@@ -931,9 +956,6 @@ midRoll = false
 lastRoll = rollNum
 end
 
-elseif rollNum < 6 then
-midRoll = true
-windower.send_command('@wait 4.4;input /ja "Double-Up" <me>')
 end
 end
 end)
