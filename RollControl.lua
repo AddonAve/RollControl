@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
 
 _addon.name = 'RollControl'
-_addon.version = '1.4.0'
+_addon.version = '1.5.0'
 _addon.author = 'Addon Ave'
 _addon.commands = {'rc'}
 
@@ -1025,7 +1025,7 @@ end
 rollPlusStepCache[rollid] = step
 end
 else
--- Not on COR: use configured Roll+ item every time (no gear issues here)
+-- Not on COR: use configured Roll+ item every time
 step = remoteRollPlus or 0
 end
 
@@ -1071,19 +1071,23 @@ end
 local gearInfo = rollInfo[rollid][19]
 if gearInfo ~= nil and type(gearInfo) == 'table' then
 local gearSlot = gearInfo[1]
-local gear1 = gearInfo[2]
-local gear2 = gearInfo[3]
-local gear3 = gearInfo[4]
-local bonus = gearInfo[5] or 0
+local bonus = gearInfo[#gearInfo] or 0
 
 if bonus ~= 0 and gearSlot ~= nil then
-local hasGear =
-gearTable[gearSlot] == gear1 or
-gearTable[gearSlot] == gear2 or
-gearTable[gearSlot] == gear3
+local equipped = gearTable[gearSlot]
+local hasGear = false
 
-local bonusVal = hasGear and bonus or 0
-rollVal = rollVal + bonusVal
+for i = 2, #gearInfo - 1 do
+local gid = gearInfo[i]
+if gid and gid ~= 0 and equipped == gid then
+hasGear = true
+break
+end
+end
+
+if hasGear then
+rollVal = rollVal + bonus
+end
 end
 end
 
