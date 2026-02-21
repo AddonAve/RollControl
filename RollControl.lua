@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
 
 _addon.name = 'RollControl'
-_addon.version = '1.5.0'
+_addon.version = '1.6.0'
 _addon.author = 'Addon Ave'
 _addon.commands = {'rc'}
 
@@ -670,7 +670,7 @@ return new, color
 end)
 
 --------------------------------------------------------------------------------
--- Double-Up and Fold
+-- Double-Up + Fold
 --------------------------------------------------------------------------------
 
 windower.register_event('outgoing text', function(original, modified)
@@ -736,7 +736,7 @@ local rollNum = act.targets[1].actions[1].param
 local actor = act.actor_id
 
 --------------------------------------------------------------------------------
--- Lucky and Bust info
+-- Lucky + Bust info
 --------------------------------------------------------------------------------
 
 local function player_in_targets(a)
@@ -835,7 +835,7 @@ end
 end
 
 --------------------------------------------------------------------------------
--- Crooked Cards/Double-Up/Snake Eye
+-- Crooked Cards + Double-Up + Snake Eye
 --------------------------------------------------------------------------------
 
 -- Ignore Phantom Roll used by trusts
@@ -908,7 +908,7 @@ end
 local snakeReady = abil_recasts[197] == 0
 local doubleReady = abil_recasts[195] == 0
 
--- Never queue Double-Up once we've hit roll of 7 or higher
+-- Never queue Double-Up once we've hit a roll of 7 or higher
 if lastRoll and lastRoll >= 7 then
 return
 end
@@ -918,6 +918,7 @@ lastRoll = rollNum
 return
 end
 
+-- If roll is exactly 10, use Snake Eye before Double-Up to guarantee landing on 11
 if available_ja:contains(177) and snakeReady and doubleReady and rollNum == 10 then
 midRoll = true
 du_guard_rollID = rollID
@@ -925,6 +926,7 @@ du_guard_rollNum = rollNum
 du_guard_until = now_clock + 1.0
 windower.send_command('wait 1.2;input /ja "Snake Eye" <me>;wait 4.4;input /ja "Double-Up" <me>')
 
+-- If current roll is 1 below lucky number and Snake Eye + Double-Up are ready, use Snake Eye to guarantee landing on lucky via Double-Up
 elseif available_ja:contains(177) and snakeReady and doubleReady
 and rollNum == (rollInfo[rollID][15] - 1) then
 midRoll = true
@@ -933,6 +935,7 @@ du_guard_rollNum = rollNum
 du_guard_until = now_clock + 1.0
 windower.send_command('wait 1.2;input /ja "Snake Eye" <me>;wait 4.4;input /ja "Double-Up" <me>')
 
+-- If Snake Eye + Double-Up are ready and we've hit a roll of 7 or higher, use Snake Eye -> Double-Up to force +1, unless already on 11
 elseif available_ja:contains(177) and snakeReady and doubleReady
 and lastRoll ~= 11
 and rollNum > 6
@@ -961,7 +964,7 @@ end
 end)
 
 --------------------------------------------------------------------------------
--- RollEffect/BustRate/ReportRollInfo
+-- RollEffect + BustRate + ReportRollInfo
 --------------------------------------------------------------------------------
 
 function RollEffect(rollid, rollnum, crookedApplied)
@@ -983,7 +986,7 @@ return "Pet:"..hpVal.." Regen".." +"..tpVal.." Regain"
 end
 
 --------------------------------------------------------------------------------
--- Roll+ from COR gear or remote_roll_plus (remember first-roll step)
+-- Roll+ from COR gear or remote_roll_plus
 --------------------------------------------------------------------------------
 
 if rollVal ~= '?' then
@@ -1136,9 +1139,9 @@ rollInfo[rollID][15]..' Unlucky #: '..rollInfo[rollID][16]
 end
 end
 
-----------------------------------------------------
+--------------------------------------------------------------------------------
 -- Resume rolls when debuff clears
-----------------------------------------------------
+--------------------------------------------------------------------------------
 
 local function is_roll_block_buff(buff_id)
 local b = res.buffs[buff_id]
@@ -1457,26 +1460,10 @@ end
 end)
 
 --------------------------------------------------------------------------------
--- Job change
+-- Job change + Zone change
 --------------------------------------------------------------------------------
 
-windower.register_event('job change', function()
-zonedelay = 0
-autoroll = false
-lastRoll = 0
-lastRollCrooked = false
-midRoll = false
-crookedPending = false
-isLucky = false
-rollPlusStepCache = {}
-update_displaybox()
-end)
-
---------------------------------------------------------------------------------
--- Zone change
---------------------------------------------------------------------------------
-
-windower.register_event('zone change', function()
+windower.register_event('job change', 'zone change', function()
 zonedelay = 0
 autoroll = false
 lastRoll = 0
