@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
 
 _addon.name = 'RollControl'
-_addon.version = '1.6.0'
+_addon.version = '1.8.0'
 _addon.author = 'Addon Ave'
 _addon.commands = {'rc'}
 
@@ -240,8 +240,9 @@ if not party then
 return false
 end
 
-for key, member in pairs(party) do
--- Only process actual member tables
+-- Local party slots: p0 - p5
+for i = 0, 5 do
+local member = party['p' .. i]
 if type(member) == 'table' and member.mob and member.mob.id then
 if member_has_job(member, job_key) then
 return true
@@ -530,9 +531,10 @@ end)
 --------------------------------------------------------------------------------
 
 function doRoll()
+--[[Block rolls in city zones
 if Cities:contains(res.zones[windower.ffxi.get_info().zone].english) then
 return
-end
+end]]
 if not autoroll then
 return
 end
