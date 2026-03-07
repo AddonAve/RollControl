@@ -294,14 +294,14 @@ gearTable = {
 
 buffId = S{309} + S(res.buffs:english(string.endswith-{' Roll'})):map(table.get-{'id'})
 
--- 0x1E = Normal Variant, 0x1F = Brighter Variant
+-- Colors
 partyColor = {
-p0 = string.char(0x1E, 247), -- Teal
-p1 = string.char(0x1E, 204), -- Yellow
-p2 = string.char(0x1E, 156), -- Green
-p3 = string.char(0x1E, 238), -- Purple
-p4 = string.char(0x1E, 5),   -- Red
-p5 = string.char(0x1E, 6),   -- Blue
+p0 = string.char(0x1F, 222),	-- Blue
+p1 = string.char(0x1F, 28),		-- Coral
+p2 = string.char(0x1F, 6),		-- Green
+p3 = string.char(0x1F, 4),		-- Purple
+p4 = string.char(0x1F, 5),		-- Teal
+p5 = string.char(0x1F, 128),	-- Yellow
 }
 
 rollIndex = {
@@ -816,9 +816,11 @@ end
 if rollInfo[rollID][1] == "Choral" and vnum then
 val = -math.abs(vnum)
 end
--- Arrow
+
+-- Arrow (Bust)
 windower.add_to_chat(1, string.char(31,167)..amountHit..'Bust! '..chat.controls.reset..chars.implies..' '..membersHit..' '..chars.implies..' ('..val..rollInfo[rollID][14]..')')
 else
+
 -- Add "+" for positive bonuses, but leave negatives as is
 local bonusText = tostring(rollBonus)
 local bonusPrefix = ''
@@ -827,7 +829,8 @@ local bonusPrefix = ''
 if not bonusText:match('^%-') then
 bonusPrefix = '+'
 end
--- Arrow
+
+-- Arrow (Bonus)
 windower.add_to_chat(1, amountHit..membersHit..chat.controls.reset..' '..chars.implies..' '..
 rollInfo[rollID][1]..' Roll '..chars['circle' .. rollNum]..
 luckChat..string.char(31,13)..' ('..bonusPrefix..bonusText..')'..
