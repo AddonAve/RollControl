@@ -54,7 +54,7 @@ defaults.luckinfo = true   		-- Show Lucky or Unlucky info line
 defaults.engaged = false  		-- Only roll when engaged
 defaults.holdtp = false			-- Prevents rolls from being used while your TP is at least 1000
 defaults.reroll_unlucky = true	-- If you land an Unlucky total, automatically Double-Up again
-defaults.Roll_ind_1 = 8     	-- Chaos Roll
+defaults.Roll_ind_1 = 8     		-- Chaos Roll
 defaults.Roll_ind_2 = 12		-- Samurai Roll
 defaults.remote_roll_plus = 7   -- COR roll+ potency (not self): 0|3|5|6|7|8
 defaults.showdisplay = true   	-- Show small UI text line
@@ -688,10 +688,9 @@ if cleaned:match('/jobability \"?Crooked Cards') or cleaned:match('/ja \"?Crooke
 crookedPending = true
 end
 
--- Stop Double-Up on Lucky unless confirmed
+-- Stop Double-Up on lucky unless confirmed
 if cleaned:match('/jobability \"?Double.*Up') or cleaned:match('/ja \"?Double.*Up') then
--- Hard Stop: never queue Double-Up once we've hit 8+
-if lastRoll and lastRoll >= 8 then
+if not midRoll and lastRoll and lastRoll >= 7 then
 modified = ""
 return modified
 end
@@ -883,9 +882,7 @@ if rollID == du_guard_rollID and rollNum == du_guard_rollNum and now_clock < du_
 return
 end
 
-
 -- If we land the Unlucky number, immediately Double-Up again
--- This overrides the usual "stop at 7+" safety rule so you can always roll off an Unlucky total
 if settings.reroll_unlucky
 and rollNum == rollInfo[rollID][16]
 then
@@ -903,7 +900,7 @@ reroll_guard_until = now_clock2 + 1.5
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
 du_guard_until = now_clock2 + 1.5
-windower.send_command('wait 1.2;input /ja "Double-Up" <me>')
+windower.send_command('wait 2;input /ja "Double-Up" <me>')
 return
 end
 end
@@ -913,52 +910,43 @@ end
 local snakeReady = abil_recasts[197] == 0
 local doubleReady = abil_recasts[195] == 0
 
--- Never queue Double-Up once we've hit a roll of 7 or higher
-if lastRoll and lastRoll >= 7 then
-return
-end
-if rollNum >= 7 then
-midRoll = false
-lastRoll = rollNum
-return
-end
-
--- If roll is exactly 10, use Snake Eye before Double-Up to guarantee landing on 11
+-- If roll is exactly 10, use Snake Eye before Double-Up to guarantee 11
 if available_ja:contains(177) and snakeReady and doubleReady and rollNum == 10 then
 midRoll = true
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
 du_guard_until = now_clock + 1.0
-windower.send_command('wait 1.2;input /ja "Snake Eye" <me>;wait 4.4;input /ja "Double-Up" <me>')
+windower.send_command('wait 2;input /ja "Snake Eye" <me>;wait 4.8;input /ja "Double-Up" <me>')
+return
 
--- If current roll is 1 below lucky number and Snake Eye + Double-Up are ready, use Snake Eye to guarantee landing on lucky via Double-Up
+-- If current roll is 1 below lucky number and Snake Eye + Double-Up are ready, queue Snake Eye + Double-Up to guarantee lucky
 elseif available_ja:contains(177) and snakeReady and doubleReady
 and rollNum == (rollInfo[rollID][15] - 1) then
 midRoll = true
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
 du_guard_until = now_clock + 1.0
-windower.send_command('wait 1.2;input /ja "Snake Eye" <me>;wait 4.4;input /ja "Double-Up" <me>')
+windower.send_command('wait 2;input /ja "Snake Eye" <me>;wait 4.8;input /ja "Double-Up" <me>')
+return
+end
 
--- If Snake Eye + Double-Up are ready and we've hit a roll of 7 or higher, use Snake Eye -> Double-Up to force +1, unless already on 11
-elseif available_ja:contains(177) and snakeReady and doubleReady
-and lastRoll ~= 11
-and rollNum > 6
-and rollNum == rollInfo[rollID][16] then
+-- Never queue Double-Up once we've hit a roll of 7 or higher unless the roll is unlucky
+if lastRoll and lastRoll >= 7 and lastRoll ~= rollInfo[rollID][16] then
+return
+end
+if rollNum >= 7 and rollNum ~= rollInfo[rollID][16] then
+midRoll = false
+lastRoll = rollNum
+return
+end
+
+-- If current roll is 7 or lower use Double-Up
+if doubleReady and not lastRollCrooked and rollNum <= 7 then
 midRoll = true
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
 du_guard_until = now_clock + 1.0
-windower.send_command('wait 1.2;input /ja "Snake Eye" <me>;wait 4.4;input /ja "Double-Up" <me>')
-
--- Double-Up
-elseif doubleReady and not lastRollCrooked and rollNum <= 7 then
-midRoll = true
-du_guard_rollID = rollID
-du_guard_rollNum = rollNum
-du_guard_until = now_clock + 1.0
-windower.send_command('wait 4.4;input /ja "Double-Up" <me>')
-
+windower.send_command('wait 4.8;input /ja "Double-Up" <me>')
 else
 midRoll = false
 lastRoll = rollNum
