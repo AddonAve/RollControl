@@ -45,19 +45,19 @@ res = require('resources')
 --------------------------------------------------------------------------------
 
 defaults = {}
-defaults.autostop = true   		-- Stop Double-Up on Lucky roll unless you confirm
-defaults.bust = 1      			-- Show Bust chance info
-defaults.crooked = true			-- Crooked Cards 
-defaults.effected = 1      		-- Show number of party members hit
-defaults.fold = 1      			-- Requires Bust or multiple rolls
-defaults.luckinfo = true   		-- Show Lucky or Unlucky info line
-defaults.engaged = false  		-- Only roll when engaged
-defaults.holdtp = false			-- Prevents rolls from being used while your TP is at least 1000
-defaults.reroll_unlucky = true	-- If you land an Unlucky total, automatically Double-Up again
-defaults.Roll_ind_1 = 8     		-- Chaos Roll
-defaults.Roll_ind_2 = 12		-- Samurai Roll
-defaults.remote_roll_plus = 7   -- COR roll+ potency (not self): 0|3|5|6|7|8
-defaults.showdisplay = true   	-- Show small UI text line
+defaults.autostop = true   			-- Stop Double-Up on Lucky roll unless you confirm
+defaults.bust = 1      				-- Show Bust chance info
+defaults.crooked = true				-- Crooked Cards 
+defaults.effected = 1      			-- Show number of party members hit
+defaults.fold = 1      				-- Requires Bust or multiple rolls
+defaults.luckinfo = true   			-- Show Lucky or Unlucky info line
+defaults.engaged = false  			-- Only roll when engaged
+defaults.holdtp = false				-- Prevents rolls from being used while your TP is at least 1000
+defaults.reroll_unlucky = true		-- If you land an Unlucky total, automatically Double-Up again
+defaults.Roll_ind_1 = 8     		-- Default: Chaos Roll
+defaults.Roll_ind_2 = 12			-- Default: Samurai Roll
+defaults.remote_roll_plus = 7   	-- COR roll+ potency (not self): 0|3|5|6|7|8
+defaults.showdisplay = true   		-- Show small UI text line
 defaults.displayx = 16
 defaults.displayy = 712
 
@@ -104,6 +104,24 @@ local du_guard_rollNum = 0
 local reroll_guard_until = 0
 local reroll_guard_rollID = 0
 local reroll_guard_rollNum = 0
+
+-- Retry the most recent queued Double-Up
+local pending_double_up_retry = false
+local pending_double_up_retry_count = 0
+local pending_double_up_retry_delay = 2.4
+local max_double_up_retries = 2
+
+local function queue_double_up(delay, retry_delay)
+pending_double_up_retry = true
+pending_double_up_retry_count = 0
+pending_double_up_retry_delay = retry_delay or 2.4
+windower.send_command(('wait %.1f;input /ja "Double-Up" <me>'):format(delay or 0))
+end
+
+local function clear_double_up_retry()
+pending_double_up_retry = false
+pending_double_up_retry_count = 0
+end
 
 --------------------------------------------------------------------------------
 -- Job detection
@@ -311,6 +329,7 @@ rollIndex = {
 'Blitzer\'s Roll','Tactician\'s Roll','Allies\' Roll','Miser\'s Roll','Companion\'s Roll','Avenger\'s Roll','Naturalist\'s Roll','Runeist\'s Roll'
 }
 
+-- 6: 4, 7: 8, 8: 9, 9: 8, 10: 2
 -- Roll Total, Bust Effect, Effect, Lucky, Unlucky, Roll +1, Job Bonus, {Equipment Slot, Bonus Equipment, and Effect}
 local rollTable = {
 ['Allies\'']      = {2,3,20,5,7,9,11,13,15,1,25, '-5', '% Skillchain Damage', 3, 10, 1, {nil,0}, {6, 11120, 27084, 27085, 23235, 23570, 5}},
@@ -613,7 +632,7 @@ and abil_recasts[96] == 0
 then
 lastRollCrooked = true
 crookedPending = true
-windower.send_command('input /ja "Crooked Cards" <me>;wait 2;input /ja "'..rollIndex[settings.Roll_ind_1]..'" <me>')
+windower.send_command('input /ja "Crooked Cards" <me>;wait 2.8;input /ja "'..rollIndex[settings.Roll_ind_1]..'" <me>')
 else
 lastRollCrooked = false
 windower.send_command('input /ja "'..rollIndex[settings.Roll_ind_1]..'" <me>')
@@ -660,6 +679,15 @@ end
 
 -- Hide
 if old:find("cannot perform that action on the selected sub%-target") then
+return true
+end
+
+-- Retry Double-Up once if it was attempted too early
+if old:find("Unable to use job ability") then
+if pending_double_up_retry and pending_double_up_retry_count < max_double_up_retries then
+pending_double_up_retry_count = pending_double_up_retry_count + 1
+windower.send_command(('wait %.1f;input /ja "Double-Up" <me>'):format(pending_double_up_retry_delay))
+end
 return true
 end
 
@@ -853,6 +881,8 @@ return
 end
 
 if actor == player_now.id then
+clear_double_up_retry()
+
 if act.targets[1].actions[1].message ~= 424 then
 lastRollCrooked = false
 end
@@ -890,7 +920,7 @@ local now_clock2 = os.clock()
 -- Guard against duplicate action packets producing multiple Double-Up queues
 if not (rollID == reroll_guard_rollID and rollNum == reroll_guard_rollNum and now_clock2 < reroll_guard_until) then
 -- We use the same double-up readiness check as the normal logic
-local doubleReady = abil_recasts[195] == 0
+local doubleReady = abil_recasts[194] == 0
 if doubleReady then
 midRoll = true
 lastRoll = rollNum
@@ -900,7 +930,7 @@ reroll_guard_until = now_clock2 + 1.5
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
 du_guard_until = now_clock2 + 1.5
-windower.send_command('wait 2;input /ja "Double-Up" <me>')
+queue_double_up(2.8, 1.2)
 return
 end
 end
@@ -908,7 +938,7 @@ end
 
 -- Snake Eye: 10 or (Lucky -1)
 local snakeReady = abil_recasts[197] == 0
-local doubleReady = abil_recasts[195] == 0
+local doubleReady = abil_recasts[194] == 0
 
 -- If roll is exactly 10, use Snake Eye before Double-Up to guarantee 11
 if available_ja:contains(177) and snakeReady and doubleReady and rollNum == 10 then
@@ -916,7 +946,8 @@ midRoll = true
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
 du_guard_until = now_clock + 1.0
-windower.send_command('wait 2;input /ja "Snake Eye" <me>;wait 4.8;input /ja "Double-Up" <me>')
+windower.send_command('wait 2.8;input /ja "Snake Eye" <me>')
+queue_double_up(7.8, 1.2)
 return
 
 -- If current roll is 1 below lucky number and Snake Eye + Double-Up are ready, queue Snake Eye + Double-Up to guarantee lucky
@@ -926,7 +957,8 @@ midRoll = true
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
 du_guard_until = now_clock + 1.0
-windower.send_command('wait 2;input /ja "Snake Eye" <me>;wait 4.8;input /ja "Double-Up" <me>')
+windower.send_command('wait 2.8;input /ja "Snake Eye" <me>')
+queue_double_up(7.8, 1.2)
 return
 end
 
@@ -946,7 +978,7 @@ midRoll = true
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
 du_guard_until = now_clock + 1.0
-windower.send_command('wait 4.8;input /ja "Double-Up" <me>')
+queue_double_up(5.0, 1.2)
 else
 midRoll = false
 lastRoll = rollNum
