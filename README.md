@@ -2,32 +2,33 @@
 
 ## Features
 
-**Automatic Rolls:**
-	- Rolls while Engaged or Idle
-	- Automatically pauses rolling while Paralysis, Impairment, or Amnesia are active and resumes once the debuff clears
+**Phantom Rolls:**
+	- Automaticall rolls while Engaged or Idle
+	- Automatically pauses rolls while Paralysis, Impairment, or Amnesia are active and resumes once the debuff clears
 	- Clear busts and blocks Fold unless you have a bust or you’ve attempted Fold more than once
-	- Suspends rolls while **Sneak/Invisible** are active
+	- Crooked Cards is used with roll 1 (optional)
+	- Suspends rolls while Sneak/Invisible are active
 
 **Display Overlay:**
+	- Indicates if Engaged Mode is enabled
 	- Shows **Roll 1** and **Roll 2**
 	- Shows rolls on/off
 	- Shows when rolls are suspended by Sneak/Invisible
-	- Indicates if **Engaged Mode** is enabled
 	
-**Double-Up:**
-	- Uses **Snake Eye** on rolls 7 - 10
-	- Double-Ups low rolls
+**Double-Up + Snake Eye:**
 	- Blocks accidental Double-Up on a Lucky roll and requires a second Double-Up command to confirm
+	- Double-Up on low rolls
+	- Retries Double-Up if you get unable to use job ability due to performing another action
+	- Snake Eye is used on unlucky rolls and roll 10
 
 **Hold TP:**
+	- Best used if Tactician's Roll is set
     - Prevents rolls from being used while your TP is at least 1000 (optional)
     - Resumes rolls once your TP drops below 1000
-	- Best used if Tactician's Roll is active
 
 **Roll Tracker:**
-	- Uses **Crooked Cards** with Roll 1 (optional)
-	- Displays correct values for **Crooked Cards** bonus (COR only), gear and job bonuses in roll effect (any job)
-	- You must find out the roll+ potency from the COR in party and configure it
+	- Displays correct roll effect values for **Crooked Cards** bonus for the (COR), gear and job bonuses for roll effect displays for (any job)
+	- You must find out the roll+ potency from the COR in party and configure it in settings
 
 ## Commands
 
