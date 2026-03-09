@@ -912,15 +912,16 @@ if rollID == du_guard_rollID and rollNum == du_guard_rollNum and now_clock < du_
 return
 end
 
--- If we land the Unlucky number, immediately Double-Up again
+-- If we land the Unlucky number, prefer Snake Eye + Double-Up if available
 if settings.reroll_unlucky
 and rollNum == rollInfo[rollID][16]
 then
 local now_clock2 = os.clock()
 -- Guard against duplicate action packets producing multiple Double-Up queues
 if not (rollID == reroll_guard_rollID and rollNum == reroll_guard_rollNum and now_clock2 < reroll_guard_until) then
--- We use the same double-up readiness check as the normal logic
 local doubleReady = abil_recasts[194] == 0
+local snakeReady = abil_recasts[197] == 0
+
 if doubleReady then
 midRoll = true
 lastRoll = rollNum
@@ -930,7 +931,13 @@ reroll_guard_until = now_clock2 + 1.5
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
 du_guard_until = now_clock2 + 1.5
+
+if available_ja:contains(177) and snakeReady then
+windower.send_command('wait 2.8;input /ja "Snake Eye" <me>')
+queue_double_up(7.8, 1.2)
+else
 queue_double_up(2.8, 1.2)
+end
 return
 end
 end
