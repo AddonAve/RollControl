@@ -979,8 +979,8 @@ lastRoll = rollNum
 return
 end
 
--- If current roll is 7 or lower use Double-Up
-if doubleReady and not lastRollCrooked and rollNum <= 7 then
+-- If current roll is 7 or lower queue Double-Up
+if doubleReady and rollNum <= 7 then
 midRoll = true
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
