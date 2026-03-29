@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
 
 _addon.name = 'RollControl'
-_addon.version = '1.8.0'
+_addon.version = '2.0.0'
 _addon.author = 'Addon Ave'
 _addon.commands = {'rc'}
 
@@ -48,6 +48,7 @@ defaults = {}
 defaults.autostop = true   			-- Stop Double-Up on Lucky roll unless you confirm
 defaults.bust = 1      				-- Show Bust chance info
 defaults.crooked = true				-- Crooked Cards 
+defaults.crooked_roll = 1			-- 1 = Roll 1, 2 = Roll 2
 defaults.effected = 1      			-- Show number of party members hit
 defaults.fold = 1      				-- Requires Bust or multiple rolls
 defaults.luckinfo = true   			-- Show Lucky or Unlucky info line
@@ -470,13 +471,21 @@ end
 displayBox:clear()
 
 -- Roll 1 + Roll 2	
-displayBox:append("Roll 1: "..rollIndex[settings.Roll_ind_1].."   ")
+displayBox:append("Roll 1: "..rollIndex[settings.Roll_ind_1].."  ")
 if player.main_job == 'COR' and settings.Roll_ind_1 ~= settings.Roll_ind_2 then
-displayBox:append("Roll 2: "..rollIndex[settings.Roll_ind_2].."   ")
+displayBox:append("Roll 2: "..rollIndex[settings.Roll_ind_2].."  ")
+end
+
+-- Crooked Cards status
+if settings.crooked then
+local cc_roll = settings.crooked_roll or 1
+displayBox:append("CC: Roll " .. cc_roll .. "  ")
+else
+displayBox:append("CC: Off  ")
 end
 
 -- Hold TP status
-displayBox:append("Hold TP: " .. (settings.holdtp and "On" or "Off") .. "   ")
+displayBox:append("Hold TP: " .. (settings.holdtp and "On" or "Off") .. "  ")
 
 -- Rolls status
 displayBox:append("Rolls: ")
@@ -493,7 +502,7 @@ displayBox:append("Off")
 end
 
 if settings.engaged then
-displayBox:append("  Engaged Mode")
+displayBox:append("  Engaged")
 end
 
 displayBox:show()
@@ -623,23 +632,34 @@ lastRoll = 0
 lastRollCrooked = false
 end
 
-if not haveBuff(rollIndex[settings.Roll_ind_1]) then
--- Only use Crooked Cards if the toggle is On
-if settings.crooked
+local crooked_target = tonumber(settings.crooked_roll) or 1
+local roll1_name = rollIndex[settings.Roll_ind_1]
+local roll2_name = rollIndex[settings.Roll_ind_2]
+
+local can_use_crooked = settings.crooked
 and player.main_job == 'COR'
 and player.main_job_level > 94
 and abil_recasts[96] == 0
-then
+
+if not haveBuff(roll1_name) then
+if crooked_target == 1 and can_use_crooked then
 lastRollCrooked = true
 crookedPending = true
-windower.send_command('input /ja "Crooked Cards" <me>;wait 2.8;input /ja "'..rollIndex[settings.Roll_ind_1]..'" <me>')
+windower.send_command('input /ja "Crooked Cards" <me>;wait 2.8;input /ja "'..roll1_name..'" <me>')
 else
 lastRollCrooked = false
-windower.send_command('input /ja "'..rollIndex[settings.Roll_ind_1]..'" <me>')
+windower.send_command('input /ja "'..roll1_name..'" <me>')
 end
 elseif player.main_job == 'COR'
-and not haveBuff(rollIndex[settings.Roll_ind_2]) then
-windower.send_command('input /ja "'..rollIndex[settings.Roll_ind_2]..'" <me>')
+and not haveBuff(roll2_name) then
+if crooked_target == 2 and can_use_crooked then
+lastRollCrooked = true
+crookedPending = true
+windower.send_command('input /ja "Crooked Cards" <me>;wait 2.8;input /ja "'..roll2_name..'" <me>')
+else
+lastRollCrooked = false
+windower.send_command('input /ja "'..roll2_name..'" <me>')
+end
 end
 end
 
@@ -1064,10 +1084,9 @@ else
 step = remoteRollPlus or 0
 end
 
--- Only apply if this roll actually uses a numeric step (Chaos/Beast/Gallant/etc.)
+-- Apply Roll+ using the roll's configured step value
 if step > 0 and type(rollInfo[rollid][17]) == 'number' then
 rollVal = rollVal + (rollInfo[rollid][17] * step)
-end
 end
 
 --------------------------------------------------------------------------------
@@ -1139,13 +1158,14 @@ end
 --------------------------------------------------------------------------------
 
 -- Bolter's: convert internal to % move speed
-if rollName == "Bolter\'s" then
-rollVal = '%.0f':format(100 * ((5 + rollVal)/5 - 1))
+if rollName == "Bolter's" then
+rollVal = '%.0f':format(rollVal)
 end
 
 -- Chaos/Gallant's/Beast: convert internal units to %
-if rollName == "Beast" or rollName == "Chaos" or rollName == "Gallant\'s" then
+if rollName == "Beast" or rollName == "Chaos" or rollName == "Gallant's" then
 rollVal = '%.2f':format(rollVal/1024 * 100)
+end
 end
 
 return rollVal .. rollInfo[rollid][14]
@@ -1355,7 +1375,11 @@ end
 -- Crooked Cards
 if sub == "cc" then
 if not cmd[2] then
-windower.add_to_chat(18, 'Crooked Cards: '..(settings.crooked and 'On' or 'Off'))
+if settings.crooked then
+windower.add_to_chat(18, 'Crooked Cards: On (Roll '..(settings.crooked_roll or 1)..')')
+else
+windower.add_to_chat(18, 'Crooked Cards: Off')
+end
 return
 end
 
@@ -1365,11 +1389,26 @@ windower.add_to_chat(18, 'Crooked Cards: On')
 elseif cmd[2] == "off" then
 settings.crooked = false
 windower.add_to_chat(18, 'Crooked Cards: Off')
+elseif cmd[2] == "roll1" then
+settings.crooked_roll = 1
+config.save(settings)
+windower.add_to_chat(18, '[RollControl] Crooked Cards set to Roll 1')
+update_displaybox()
+return
+elseif cmd[2] == "roll2" then
+settings.crooked_roll = 2
+config.save(settings)
+windower.add_to_chat(18, '[RollControl] Crooked Cards set to Roll 2')
+update_displaybox()
+return
 else
-windower.add_to_chat(18, 'Not a recognized command (use on/off)')
+windower.add_to_chat(18, 'Not a recognized command (use on/off/roll1/roll2)')
+return
 end
 
 config.save(settings)
+update_displaybox()
+
 return
 end
 
@@ -1431,10 +1470,10 @@ if sub == "display" then
 if not cmd[2] then
 settings.showdisplay = not settings.showdisplay
 windower.add_to_chat(18, 'Display: '..(settings.showdisplay and 'On' or 'Off'))
-elseif cmd[2] == 'on' or cmd[2] == 'show' then
+elseif cmd[2] == 'on' then
 settings.showdisplay = true
 windower.add_to_chat(18, 'Display: On')
-elseif cmd[2] == 'off' or cmd[2] == 'hide' then
+elseif cmd[2] == 'off' then
 settings.showdisplay = false
 windower.add_to_chat(18, 'Display: Off')
 else
@@ -1454,13 +1493,13 @@ end
 if sub == "engaged" then
 if not cmd[2] then
 settings.engaged = not settings.engaged
-windower.add_to_chat(18, 'Engaged Mode: '..(settings.engaged and 'On' or 'Off'))
-elseif cmd[2] == 'on' or cmd[2] == 'true' then
+windower.add_to_chat(18, 'Engaged: '..(settings.engaged and 'On' or 'Off'))
+elseif cmd[2] == 'on' then
 settings.engaged = true
-windower.add_to_chat(18, 'Engaged Mode: On')
-elseif cmd[2] == 'off' or cmd[2] == 'false' then
+windower.add_to_chat(18, 'Engaged: On')
+elseif cmd[2] == 'off' then
 settings.engaged = false
-windower.add_to_chat(18, 'Engaged Mode: Off')
+windower.add_to_chat(18, 'Engaged: Off')
 else
 windower.add_to_chat(18, 'Not a recognized command (use on/off)')
 end
@@ -1478,14 +1517,15 @@ end
 
 if sub == "help" then
 windower.add_to_chat(2,'[RollControl] Commands:')
-windower.add_to_chat(2,' //rc on|off - Enable/Disable')
-windower.add_to_chat(2,' //rc roll1 [name] - Set Roll #1')
-windower.add_to_chat(2,' //rc roll2 [name] - Set Roll #2')
-windower.add_to_chat(2,' //rc cc on|off - Crooked Cards on/off')
+windower.add_to_chat(2,' //rc [on|off] - Enable/Disable')
+windower.add_to_chat(2,' //rc roll1 [name] - Set Roll 1')
+windower.add_to_chat(2,' //rc roll2 [name] - Set Roll 2')
+windower.add_to_chat(2,' //rc cc [on|off] - Crooked Cards on/off')
+windower.add_to_chat(2,' //rc cc [roll1|roll2] - Set Crooked Cards for Roll 1 or Roll 2')
 windower.add_to_chat(2,' //rc holdtp on|off - Hold TP on/off')
-windower.add_to_chat(2,' //rc rollplus 0|3|5|6|7|8 - Set the COR roll+ potency (not self)')
-windower.add_to_chat(2,' //rc display on|off - Display on/off')
-windower.add_to_chat(2,' //rc engaged on|off - Rolls only when engaged')
+windower.add_to_chat(2,' //rc rollplus [0|3|5|6|7|8] - Set the COR roll+ potency (not self)')
+windower.add_to_chat(2,' //rc display [on|off] - Display on/off')
+windower.add_to_chat(2,' //rc engaged [on|off] - Rolls only when engaged')
 windower.add_to_chat(2,' //rc status - Show current status')
 return
 end
