@@ -4,7 +4,7 @@
 
 **Version 2.0.0**
 - Crooked Cards can now be set to use with Roll 1 or Roll 2
-- Crooked Cards status for Roll 1 or Roll 2 is now shown in the Display Overlay
+- Crooked Cards status for Roll 1 or Roll 2 is now shown in the display overlay
 - Fixed the calculation for Bolter's Roll
 
 ## Features
