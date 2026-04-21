@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
 
 _addon.name = 'RollControl'
-_addon.version = '2.0.0'
+_addon.version = '2.0.2'
 _addon.author = 'Addon Ave'
 _addon.commands = {'rc'}
 
@@ -487,13 +487,15 @@ end
 -- Hold TP status
 displayBox:append("Hold TP: " .. (settings.holdtp and "On" or "Off") .. "  ")
 
--- Rolls status
-displayBox:append("Rolls: ")
+-- Status
+displayBox:append("[RC] ")
 if autoroll then
-if haveBuff('Invisible') then
-displayBox:append("Suspended: Invisible")
+if haveBuff('Sneak') and haveBuff('Invisible') then
+displayBox:append("Off - Invisible+Sneak")
+elseif haveBuff('Invisible') then
+displayBox:append("Off - Invisible")
 elseif haveBuff('Sneak') then
-displayBox:append("Suspended: Sneak")
+displayBox:append("Off - Sneak")
 else
 displayBox:append("On")
 end
