@@ -1,4 +1,4 @@
-**RollControl** is a Windower addon that automates rolls when on Corsair and displays accurate Phantom Roll effects while on any job.
+**RollControl** is a Windower addon that automates rolls when on COR and displays accurate Phantom Roll effects while on any job.
 
 ## Release Notes
 
@@ -14,7 +14,7 @@
 
 **Phantom Rolls:**
 	- Automaticall rolls while Engaged or Idle
-	- Automatically pauses rolls while Paralysis, Impairment, or Amnesia are active and resumes once the debuff clears
+	- Automatically pauses rolls while Amnesia, Impairment, or Paralysis are active and resumes once the debuff clears
 	- Clear busts and blocks Fold unless you have a bust or you’ve attempted Fold more than once
 	- Crooked Cards can be set to use with Roll 1 or Roll 2
 	- Suspends rolls while Sneak/Invisible are active
