@@ -2,6 +2,9 @@
 
 ## Release Notes
 
+**Version 2.0.2**
+1. Modified text in display overlay
+
 **Version 2.0.0**
 1. Crooked Cards can now be set to use with Roll 1 or Roll 2
 2. Crooked Cards status for Roll 1 or Roll 2 is now shown in the display overlay
