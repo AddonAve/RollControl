@@ -1,4 +1,4 @@
-**RollControl** is a Windower addon that automates rolls when on COR and displays accurate Phantom Roll effects while on any job.
+**RollControl** is a Windower addon that functions as a Roller and RollTracker. It automates rolls when on COR and displays accurate Phantom Roll effects while on any job.
 
 ## Release Notes
 
