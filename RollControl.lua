@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
 
 _addon.name = 'RollControl'
-_addon.version = '2.0.2'
+_addon.version = '2.0.4'
 _addon.author = 'Addon Ave'
 _addon.commands = {'rc'}
 
@@ -60,7 +60,7 @@ defaults.Roll_ind_2 = 12			-- Default: Samurai Roll
 defaults.remote_roll_plus = 7   	-- COR roll+ potency (not self): 0|3|5|6|7|8
 defaults.showdisplay = true   		-- Show small UI text line
 defaults.displayx = 16
-defaults.displayy = 712
+defaults.displayy = 674
 
 settings = config.load(defaults)
 
@@ -95,6 +95,13 @@ lastJobBonusAnnounce = {}
 
 local remoteRollPlus = 0
 local was_dead = false
+
+-- Position-based idle movement detection
+local last_pos = {x = nil, y = nil, z = nil}
+local last_move_check = 0
+local is_idle_moving = false
+local idle_move_threshold = 0.10
+local idle_move_check_interval = 0.20
 
 -- Prevent duplicate Double-Up command queues for the same roll result
 local du_guard_until = 0
@@ -375,7 +382,9 @@ end
 end
 
 settings = config.load(defaults)
-remoteRollPlus = settings.remote_roll_plus or 0 
+-- Runtime-only setting
+settings.engaged = defaults.engaged
+remoteRollPlus = settings.remote_roll_plus or 0
 
 if settings.showdisplay then
 create_display(settings)
@@ -426,6 +435,62 @@ Cities = S{
 "Selbina","Mhaura","Rabao","Norg","Kazham","Eastern Adoulin","Western Adoulin",
 "Celennia Memorial Library","Mog Garden","Leafallia"
 }
+
+
+--------------------------------------------------------------------------------
+-- Movement helper
+--------------------------------------------------------------------------------
+
+local function update_idle_moving()
+local p = windower.ffxi.get_player()
+if not p then
+is_idle_moving = false
+return false
+end
+
+local status = res.statuses[p.status] and res.statuses[p.status].english
+if status ~= 'Idle' then
+is_idle_moving = false
+last_pos.x, last_pos.y, last_pos.z = nil, nil, nil
+return false
+end
+
+local me = windower.ffxi.get_mob_by_target('me')
+if not me or not me.x or not me.y or not me.z then
+is_idle_moving = false
+return false
+end
+
+if not last_pos.x then
+last_pos.x, last_pos.y, last_pos.z = me.x, me.y, me.z
+is_idle_moving = false
+return false
+end
+
+local dx = me.x - last_pos.x
+local dy = me.y - last_pos.y
+local dz = me.z - last_pos.z
+local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
+
+is_idle_moving = dist > idle_move_threshold
+
+last_pos.x, last_pos.y, last_pos.z = me.x, me.y, me.z
+return is_idle_moving
+end
+
+local function idle_moving_now()
+update_idle_moving()
+return is_idle_moving
+end
+
+windower.register_event('prerender', function()
+local now = os.clock()
+if now - last_move_check < idle_move_check_interval then
+return
+end
+last_move_check = now
+update_idle_moving()
+end)
 
 --------------------------------------------------------------------------------
 -- Display box
@@ -564,7 +629,8 @@ function doRoll()
 --[[Block rolls in city zones
 if Cities:contains(res.zones[windower.ffxi.get_info().zone].english) then
 return
-end]]
+end
+]]
 if not autoroll then
 return
 end
@@ -573,6 +639,7 @@ midRoll = false
 crookedPending = false
 return
 end
+
 -- Sneak/Invisible suspend
 if haveBuff('Sneak') or haveBuff('Invisible') then
 stealthy = true
@@ -601,6 +668,14 @@ end
 -- Idle or Engaged
 local status = res.statuses[player.status].english
 if not (((status == 'Idle') and not settings.engaged) or status == 'Engaged') then
+return
+end
+
+-- Disable rolls while idle and moving
+if status == 'Idle' and idle_moving_now() then
+midRoll = false
+crookedPending = false
+clear_double_up_retry()
 return
 end
 
@@ -728,6 +803,25 @@ end)
 windower.register_event('outgoing text', function(original, modified)
 modified = modified or original
 local cleaned = windower.convert_auto_trans(modified)
+
+-- Block queued roll actions if you are idle and moving
+if cleaned and idle_moving_now() then
+local lower = cleaned:lower()
+if lower:match('/jobability%s+"?[^"]*roll')
+or lower:match('/ja%s+"?[^"]*roll')
+or lower:match('/jobability%s+"?double.*up')
+or lower:match('/ja%s+"?double.*up')
+or lower:match('/jobability%s+"?snake eye')
+or lower:match('/ja%s+"?snake eye')
+or lower:match('/jobability%s+"?crooked cards')
+or lower:match('/ja%s+"?crooked cards')
+then
+midRoll = false
+crookedPending = false
+clear_double_up_retry()
+return ""
+end
+end
 
 if cleaned and cleaned:lower() == '/invisible' then
 return '/ma "Invisible" <me>'
@@ -1505,7 +1599,6 @@ windower.add_to_chat(18, 'Engaged: Off')
 else
 windower.add_to_chat(18, 'Not a recognized command (use on/off)')
 end
-config.save(settings)
 update_displaybox()
 return
 end
@@ -1520,8 +1613,8 @@ end
 if sub == "help" then
 windower.add_to_chat(2,'[RollControl] Commands:')
 windower.add_to_chat(2,' //rc [on|off] - Enable/Disable')
-windower.add_to_chat(2,' //rc roll1 [name] - Set Roll 1')
-windower.add_to_chat(2,' //rc roll2 [name] - Set Roll 2')
+windower.add_to_chat(2,' //rc roll1 <name> - Set Roll 1')
+windower.add_to_chat(2,' //rc roll2 <name> - Set Roll 2')
 windower.add_to_chat(2,' //rc cc [on|off] - Crooked Cards on/off')
 windower.add_to_chat(2,' //rc cc [roll1|roll2] - Set Crooked Cards for Roll 1 or Roll 2')
 windower.add_to_chat(2,' //rc holdtp on|off - Hold TP on/off')
@@ -1537,7 +1630,21 @@ end)
 -- Job change + Zone change
 --------------------------------------------------------------------------------
 
-windower.register_event('job change', 'zone change', function()
+windower.register_event('job change', function()
+zonedelay = 0
+autoroll = false
+settings.engaged = false
+config.save(settings)
+lastRoll = 0
+lastRollCrooked = false
+midRoll = false
+crookedPending = false
+isLucky = false
+rollPlusStepCache = {}
+update_displaybox()
+end)
+
+windower.register_event('zone change', function()
 zonedelay = 0
 autoroll = false
 lastRoll = 0
