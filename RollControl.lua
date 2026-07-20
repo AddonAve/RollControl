@@ -134,12 +134,11 @@ pending_double_up_retry = false
 pending_double_up_retry_count = 0
 end
 
-
--- Save roll-chain commands blocked by idle movement and replay them after stopping.
+-- Save roll-chain commands blocked by idle movement and replay them after stopping
 local function save_movement_paused_command(command)
 if not command or command == '' then return end
 
--- Avoid saving the exact same queued command more than once in a row.
+-- Avoid saving the exact same queued command more than once in a row
 if movement_paused_commands[#movement_paused_commands] ~= command then
 movement_paused_commands[#movement_paused_commands + 1] = command
 end
@@ -163,7 +162,7 @@ windower.send_command(('wait %.1f;%s'):format(delay, command))
 local lower = command:lower()
 local next_command = commands[i + 1] and commands[i + 1]:lower() or ''
 
--- Snake Eye needs extra time before Double-Up. Crooked Cards needs time before its roll.
+-- Snake Eye needs extra time before Double-Up. Crooked Cards needs time before its roll
 if lower:find('snake eye', 1, true) and next_command:find('double', 1, true) then
 delay = delay + 5.0
 elseif lower:find('crooked cards', 1, true) then
@@ -480,7 +479,6 @@ Cities = S{
 "Selbina","Mhaura","Rabao","Norg","Kazham","Eastern Adoulin","Western Adoulin",
 "Celennia Memorial Library","Mog Garden","Leafallia"
 }
-
 
 --------------------------------------------------------------------------------
 -- Movement helper
