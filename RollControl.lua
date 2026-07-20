@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
 
 _addon.name = 'RollControl'
-_addon.version = '2.0.4'
+_addon.version = '2.0.6'
 _addon.author = 'Addon Ave'
 _addon.commands = {'rc'}
 
@@ -102,6 +102,9 @@ local last_move_check = 0
 local is_idle_moving = false
 local idle_move_threshold = 0.10
 local idle_move_check_interval = 0.20
+local was_idle_moving = false
+local movement_paused_commands = {}
+local movement_resume_until = 0
 
 -- Prevent duplicate Double-Up command queues for the same roll result
 local du_guard_until = 0
@@ -129,6 +132,48 @@ end
 local function clear_double_up_retry()
 pending_double_up_retry = false
 pending_double_up_retry_count = 0
+end
+
+
+-- Save roll-chain commands blocked by idle movement and replay them after stopping.
+local function save_movement_paused_command(command)
+if not command or command == '' then return end
+
+-- Avoid saving the exact same queued command more than once in a row.
+if movement_paused_commands[#movement_paused_commands] ~= command then
+movement_paused_commands[#movement_paused_commands + 1] = command
+end
+end
+
+local function clear_movement_paused_commands()
+movement_paused_commands = {}
+movement_resume_until = 0
+end
+
+local function resume_movement_paused_commands()
+if not autoroll or #movement_paused_commands == 0 then return end
+
+local commands = movement_paused_commands
+movement_paused_commands = {}
+local delay = 0.2
+
+for i, command in ipairs(commands) do
+windower.send_command(('wait %.1f;%s'):format(delay, command))
+
+local lower = command:lower()
+local next_command = commands[i + 1] and commands[i + 1]:lower() or ''
+
+-- Snake Eye needs extra time before Double-Up. Crooked Cards needs time before its roll.
+if lower:find('snake eye', 1, true) and next_command:find('double', 1, true) then
+delay = delay + 5.0
+elseif lower:find('crooked cards', 1, true) then
+delay = delay + 2.8
+else
+delay = delay + 2.8
+end
+end
+
+movement_resume_until = os.clock() + delay + 1.0
 end
 
 --------------------------------------------------------------------------------
@@ -489,7 +534,15 @@ if now - last_move_check < idle_move_check_interval then
 return
 end
 last_move_check = now
-update_idle_moving()
+
+local moving_now = update_idle_moving()
+
+-- Resume the exact queued roll chain when idle movement ends.
+if was_idle_moving and not moving_now then
+resume_movement_paused_commands()
+end
+
+was_idle_moving = moving_now
 end)
 
 --------------------------------------------------------------------------------
@@ -589,6 +642,7 @@ crookedPending = false
 lastRoll = 0
 lastRollCrooked = false
 isLucky = false
+clear_movement_paused_commands()
 
 update_displaybox()
 end
@@ -671,11 +725,13 @@ if not (((status == 'Idle') and not settings.engaged) or status == 'Engaged') th
 return
 end
 
--- Disable rolls while idle and moving
+-- Suspend rolls while idle and moving without discarding the active roll chain.
 if status == 'Idle' and idle_moving_now() then
-midRoll = false
-crookedPending = false
-clear_double_up_retry()
+return
+end
+
+-- Do not start a fresh roll while a movement-paused chain is being replayed.
+if os.clock() < movement_resume_until then
 return
 end
 
@@ -816,9 +872,7 @@ or lower:match('/ja%s+"?snake eye')
 or lower:match('/jobability%s+"?crooked cards')
 or lower:match('/ja%s+"?crooked cards')
 then
-midRoll = false
-crookedPending = false
-clear_double_up_retry()
+save_movement_paused_command(cleaned)
 return ""
 end
 end
@@ -1336,6 +1390,7 @@ end
 
 if sub == "off" then
 zonedelay = 2
+clear_movement_paused_commands()
 if autoroll then
 autoroll = false
 windower.add_to_chat(18, 'Disabling Automatic Rolling')
@@ -1640,6 +1695,7 @@ lastRollCrooked = false
 midRoll = false
 crookedPending = false
 isLucky = false
+clear_movement_paused_commands()
 rollPlusStepCache = {}
 update_displaybox()
 end)
