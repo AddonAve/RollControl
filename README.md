@@ -3,6 +3,10 @@ It automates rolls when COR is main or sub job and displays accurate Phantom Rol
 
 ## Release Notes
 
+**Version 2.0.6**
+	1. Fixed an issue in Version 2.0.4.
+	2. Will now pause the current roll sequence instead of cancelling it while idle and moving.
+	
 **Version 2.0.4**
 	1. Will not roll while idle and moving.
 
