@@ -105,6 +105,7 @@ local idle_move_check_interval = 0.20
 local was_idle_moving = false
 local movement_paused_commands = {}
 local movement_resume_until = 0
+local movement_pause_active = false
 
 -- Prevent duplicate Double-Up command queues for the same roll result
 local du_guard_until = 0
@@ -134,19 +135,21 @@ pending_double_up_retry = false
 pending_double_up_retry_count = 0
 end
 
--- Save roll-chain commands blocked by idle movement and replay them after stopping
+-- Save roll-chain commands blocked by idle movement and replay them after stopping.
 local function save_movement_paused_command(command)
 if not command or command == '' then return end
 
--- Avoid saving the exact same queued command more than once in a row
+-- Avoid saving the exact same queued command more than once in a row.
 if movement_paused_commands[#movement_paused_commands] ~= command then
 movement_paused_commands[#movement_paused_commands + 1] = command
+movement_pause_active = true
 end
 end
 
 local function clear_movement_paused_commands()
 movement_paused_commands = {}
 movement_resume_until = 0
+movement_pause_active = false
 end
 
 local function resume_movement_paused_commands()
@@ -154,6 +157,7 @@ if not autoroll or #movement_paused_commands == 0 then return end
 
 local commands = movement_paused_commands
 movement_paused_commands = {}
+movement_pause_active = false
 local delay = 0.2
 
 for i, command in ipairs(commands) do
@@ -162,7 +166,7 @@ windower.send_command(('wait %.1f;%s'):format(delay, command))
 local lower = command:lower()
 local next_command = commands[i + 1] and commands[i + 1]:lower() or ''
 
--- Snake Eye needs extra time before Double-Up. Crooked Cards needs time before its roll
+-- Snake Eye needs extra time before Double-Up. Crooked Cards needs time before its roll.
 if lower:find('snake eye', 1, true) and next_command:find('double', 1, true) then
 delay = delay + 5.0
 elseif lower:find('crooked cards', 1, true) then
@@ -535,8 +539,12 @@ last_move_check = now
 
 local moving_now = update_idle_moving()
 
--- Resume the exact queued roll chain when idle movement ends.
-if was_idle_moving and not moving_now then
+-- Resume any blocked roll chain as soon as movement has actually stopped.
+-- Do not depend only on the moving -> stopped edge, because an outgoing
+-- Snake Eye/Double-Up command can be blocked between movement samples.
+if not moving_now and movement_pause_active and #movement_paused_commands > 0 then
+resume_movement_paused_commands()
+elseif was_idle_moving and not moving_now then
 resume_movement_paused_commands()
 end
 
