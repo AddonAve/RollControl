@@ -39,6 +39,7 @@ chars = require('chat.chars')
 packets = require('packets')
 texts = require('texts')
 res = require('resources')
+local socket = require('socket')
 
 --------------------------------------------------------------------------------
 -- Settings
@@ -98,14 +99,16 @@ local was_dead = false
 
 -- Position-based idle movement detection
 local last_pos = {x = nil, y = nil, z = nil}
-local last_move_check = 0
 local is_idle_moving = false
-local idle_move_threshold = 0.10
-local idle_move_check_interval = 0.20
+local idle_move_threshold = 0.01
+local idle_move_sample_interval = 0.10
+local last_move_sample_time = 0
 local was_idle_moving = false
 local movement_paused_commands = {}
 local movement_resume_until = 0
 local movement_pause_active = false
+local idle_stationary_samples = 0
+local idle_stop_confirm_samples = 3
 
 -- Prevent duplicate Double-Up command queues for the same roll result
 local du_guard_until = 0
@@ -123,11 +126,44 @@ local pending_double_up_retry_count = 0
 local pending_double_up_retry_delay = 2.4
 local max_double_up_retries = 2
 
+-- Internal roll-chain scheduler for delayed roll actions
+-- While Idle and moving, due actions remain queued and execute only after movement stops
+local pending_roll_actions = {}
+
+local function queue_roll_action(command, delay)
+local now = socket.gettime()
+local due = now + (delay or 0)
+
+-- Preserve chain order. A later step cannot become due before the prior step.
+if #pending_roll_actions > 0 then
+local previous_due = pending_roll_actions[#pending_roll_actions].due or now
+if due < previous_due then
+due = previous_due
+end
+end
+
+pending_roll_actions[#pending_roll_actions + 1] = {
+command = command,
+due = due,
+}
+end
+
+local function queue_roll_sequence(actions)
+local now = socket.gettime()
+for index, action in ipairs(actions) do
+pending_roll_actions[#pending_roll_actions + 1] = {
+command = action.command,
+due = index == 1 and (now + (action.delay or 0)) or nil,
+delay_after_previous = index > 1 and (action.delay or 0) or nil,
+}
+end
+end
+
 local function queue_double_up(delay, retry_delay)
 pending_double_up_retry = true
 pending_double_up_retry_count = 0
 pending_double_up_retry_delay = retry_delay or 2.4
-windower.send_command(('wait %.1f;input /ja "Double-Up" <me>'):format(delay or 0))
+queue_roll_action('input /ja "Double-Up" <me>', delay or 0)
 end
 
 local function clear_double_up_retry()
@@ -135,11 +171,11 @@ pending_double_up_retry = false
 pending_double_up_retry_count = 0
 end
 
--- Save roll-chain commands blocked by idle movement and replay them after stopping.
+-- Save roll-chain commands blocked by idle movement and replay them after stopping
 local function save_movement_paused_command(command)
 if not command or command == '' then return end
 
--- Avoid saving the exact same queued command more than once in a row.
+-- Avoid saving the exact same queued command more than once in a row
 if movement_paused_commands[#movement_paused_commands] ~= command then
 movement_paused_commands[#movement_paused_commands + 1] = command
 movement_pause_active = true
@@ -176,7 +212,7 @@ delay = delay + 2.8
 end
 end
 
-movement_resume_until = os.clock() + delay + 1.0
+movement_resume_until = socket.gettime() + delay + 1.0
 end
 
 --------------------------------------------------------------------------------
@@ -488,67 +524,61 @@ Cities = S{
 -- Movement helper
 --------------------------------------------------------------------------------
 
-local function update_idle_moving()
-local p = windower.ffxi.get_player()
-if not p then
-is_idle_moving = false
-return false
+-- Movement is tracked from outgoing player-update packets (0x015)
+local movement_packet_pos = {x = nil, y = nil, z = nil}
+local movement_last_change = 0
+local movement_stop_timeout = 0.85
+local movement_packet_threshold = 0.0001
+
+local function set_idle_moving(value)
+local was_moving = is_idle_moving
+is_idle_moving = value and true or false
+
+if was_moving and not is_idle_moving then
+if movement_pause_active and #movement_paused_commands > 0 then
+resume_movement_paused_commands()
+end
 end
 
-local status = res.statuses[p.status] and res.statuses[p.status].english
-if status ~= 'Idle' then
-is_idle_moving = false
-last_pos.x, last_pos.y, last_pos.z = nil, nil, nil
-return false
-end
-
-local me = windower.ffxi.get_mob_by_target('me')
-if not me or not me.x or not me.y or not me.z then
-is_idle_moving = false
-return false
-end
-
-if not last_pos.x then
-last_pos.x, last_pos.y, last_pos.z = me.x, me.y, me.z
-is_idle_moving = false
-return false
-end
-
-local dx = me.x - last_pos.x
-local dy = me.y - last_pos.y
-local dz = me.z - last_pos.z
-local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
-
-is_idle_moving = dist > idle_move_threshold
-
-last_pos.x, last_pos.y, last_pos.z = me.x, me.y, me.z
-return is_idle_moving
+was_idle_moving = is_idle_moving
 end
 
 local function idle_moving_now()
-update_idle_moving()
-return is_idle_moving
+local p = windower.ffxi.get_player()
+if not p then return false end
+local status = res.statuses[p.status] and res.statuses[p.status].english
+return status == 'Idle' and is_idle_moving
 end
 
+-- Execute one due roll-chain step at a time
+-- Movement pauses the queue without discarding it, so Double-Up Chance can continue after the player stops
 windower.register_event('prerender', function()
-local now = os.clock()
-if now - last_move_check < idle_move_check_interval then
-return
+if not autoroll or #pending_roll_actions == 0 then return end
+if idle_moving_now() then return end
+
+local action = pending_roll_actions[1]
+local now = socket.gettime()
+if action and action.due and now >= action.due then
+table.remove(pending_roll_actions, 1)
+windower.send_command(action.command)
+
+-- Start the next step's delay only after this step actually executes
+-- This preserves Snake Eye -> Double-Up spacing even after a long movement pause
+local next_action = pending_roll_actions[1]
+if next_action and not next_action.due then
+next_action.due = now + (next_action.delay_after_previous or 0)
 end
-last_move_check = now
-
-local moving_now = update_idle_moving()
-
--- Resume any blocked roll chain as soon as movement has actually stopped.
--- Do not depend only on the moving -> stopped edge, because an outgoing
--- Snake Eye/Double-Up command can be blocked between movement samples.
-if not moving_now and movement_pause_active and #movement_paused_commands > 0 then
-resume_movement_paused_commands()
-elseif was_idle_moving and not moving_now then
-resume_movement_paused_commands()
 end
+end)
 
-was_idle_moving = moving_now
+-- A final stationary packet is normally sent when movement ends
+-- The timeout is only a fallback for cases where that final packet is not delivered
+windower.register_event('prerender', function()
+if is_idle_moving and movement_last_change > 0 then
+if socket.gettime() - movement_last_change >= movement_stop_timeout then
+set_idle_moving(false)
+end
+end
 end)
 
 --------------------------------------------------------------------------------
@@ -649,6 +679,7 @@ lastRoll = 0
 lastRollCrooked = false
 isLucky = false
 clear_movement_paused_commands()
+pending_roll_actions = {}
 
 update_displaybox()
 end
@@ -660,8 +691,45 @@ end
 was_dead = false
 end)
 
--- Hide or show display on zoning packets
 windower.register_event('outgoing chunk', function(id, data)
+-- Player position update
+-- Use packet coordinates as the source for Idle movement so automatic rolls cannot fire while the character runs
+if id == 0x015 then
+local pkt = packets.parse('outgoing', data)
+if pkt then
+local x = pkt.X or pkt['X']
+local y = pkt.Y or pkt['Y']
+local z = pkt.Z or pkt['Z']
+
+if x and y and z then
+if movement_packet_pos.x ~= nil then
+local dx = x - movement_packet_pos.x
+local dy = y - movement_packet_pos.y
+local dz = z - movement_packet_pos.z
+local changed = (dx * dx + dy * dy + dz * dz) > movement_packet_threshold
+
+local pl = windower.ffxi.get_player()
+local status = pl and res.statuses[pl.status] and res.statuses[pl.status].english
+
+if status == 'Idle' and changed then
+movement_last_change = socket.gettime()
+set_idle_moving(true)
+elseif status ~= 'Idle' then
+set_idle_moving(false)
+end
+
+-- Do not clear movement from a single unchanged 0x015 packet
+-- Duplicate position packets can still send while the character is still running
+-- Movement ends only after no coordinate change has been observed for the timeout
+end
+
+movement_packet_pos.x = x
+movement_packet_pos.y = y
+movement_packet_pos.z = z
+end
+end
+end
+
 if id == 0x00D and displayBox then
 displayBox:hide()
 end
@@ -731,13 +799,14 @@ if not (((status == 'Idle') and not settings.engaged) or status == 'Engaged') th
 return
 end
 
--- Suspend rolls while idle and moving without discarding the active roll chain.
+-- Suspend rolls while idle and moving without discarding the active roll chain
+-- Read only the cached movement state maintained by prerender
 if status == 'Idle' and idle_moving_now() then
 return
 end
 
--- Do not start a fresh roll while a movement-paused chain is being replayed.
-if os.clock() < movement_resume_until then
+-- Do not start a fresh roll while a movement-paused chain is being replayed
+if socket.gettime() < movement_resume_until then
 return
 end
 
@@ -845,12 +914,12 @@ end
 if old:find("Unable to use job ability") then
 if pending_double_up_retry and pending_double_up_retry_count < max_double_up_retries then
 pending_double_up_retry_count = pending_double_up_retry_count + 1
-windower.send_command(('wait %.1f;input /ja "Double-Up" <me>'):format(pending_double_up_retry_delay))
+queue_roll_action('input /ja "Double-Up" <me>', pending_double_up_retry_delay)
 end
 return true
 end
 
--- Hide the system message "A command error occurred."
+-- Hides the system message below
 if old:find("A command error occurred") then
 return true
 end
@@ -1109,8 +1178,13 @@ du_guard_rollNum = rollNum
 du_guard_until = now_clock2 + 1.5
 
 if available_ja:contains(177) and snakeReady then
-windower.send_command('wait 2.8;input /ja "Snake Eye" <me>')
-queue_double_up(7.8, 1.2)
+pending_double_up_retry = true
+pending_double_up_retry_count = 0
+pending_double_up_retry_delay = 1.2
+queue_roll_sequence({
+{command = 'input /ja "Snake Eye" <me>', delay = 2.8},
+{command = 'input /ja "Double-Up" <me>', delay = 5.0},
+})
 else
 queue_double_up(2.8, 1.2)
 end
@@ -1129,8 +1203,13 @@ midRoll = true
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
 du_guard_until = now_clock + 1.0
-windower.send_command('wait 2.8;input /ja "Snake Eye" <me>')
-queue_double_up(7.8, 1.2)
+pending_double_up_retry = true
+pending_double_up_retry_count = 0
+pending_double_up_retry_delay = 1.2
+queue_roll_sequence({
+{command = 'input /ja "Snake Eye" <me>', delay = 2.8},
+{command = 'input /ja "Double-Up" <me>', delay = 5.0},
+})
 return
 
 -- If current roll is 1 below lucky number and Snake Eye + Double-Up are ready, queue Snake Eye + Double-Up to guarantee lucky
@@ -1140,8 +1219,13 @@ midRoll = true
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
 du_guard_until = now_clock + 1.0
-windower.send_command('wait 2.8;input /ja "Snake Eye" <me>')
-queue_double_up(7.8, 1.2)
+pending_double_up_retry = true
+pending_double_up_retry_count = 0
+pending_double_up_retry_delay = 1.2
+queue_roll_sequence({
+{command = 'input /ja "Snake Eye" <me>', delay = 2.8},
+{command = 'input /ja "Double-Up" <me>', delay = 5.0},
+})
 return
 end
 
@@ -1397,6 +1481,7 @@ end
 if sub == "off" then
 zonedelay = 2
 clear_movement_paused_commands()
+pending_roll_actions = {}
 if autoroll then
 autoroll = false
 windower.add_to_chat(18, 'Disabling Automatic Rolling')
