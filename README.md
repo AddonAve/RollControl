@@ -8,15 +8,15 @@ It automates rolls when COR is main or sub job and displays accurate Phantom Rol
 2. Will now pause the current roll sequence instead of cancelling it while idle and moving.
 	
 **Version 2.0.4**
-Will not roll while idle and moving.
+1. Will not roll while idle and moving.
 
 **Version 2.0.2**
-Modified text in display overlay.
+1. Modified text in display overlay.
 
 **Version 2.0.0**
-Crooked Cards can now be set to use with Roll 1 or Roll 2.
-Crooked Cards status for Roll 1 or Roll 2 is now shown in the display overlay.
-Fixed the calculation for Bolter's Roll.
+1. Crooked Cards can now be set to use with Roll 1 or Roll 2.
+2. Crooked Cards status for Roll 1 or Roll 2 is now shown in the display overlay.
+3. Fixed the calculation for Bolter's Roll.
 
 ## Features
 
