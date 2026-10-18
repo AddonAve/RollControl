@@ -3,9 +3,12 @@ It automates rolls when COR is main or sub job and displays accurate Phantom Rol
 
 ## Release Notes
 
+**Version 2.0.8**
+1. Roll+ for another COR can be saved and set by name.
+2. Fixed the calculation for Companion's and Choral Roll.
+
 **Version 2.0.6**
-1. Fixed an issue in Version 2.0.4.
-2. Will now pause the current roll sequence instead of cancelling it while idle and moving.
+1. Fixed an issue in Version 2.0.4. Pauses the current roll sequence instead of cancelling it while idle and moving.
 	
 **Version 2.0.4**
 1. Will not roll while idle and moving.
@@ -47,11 +50,11 @@ It automates rolls when COR is main or sub job and displays accurate Phantom Rol
 
 **Roll Tracker:**
 	- Displays correct roll effect values for **Crooked Cards** bonus for the (COR), gear and job bonuses for roll effect displays for (any job)
-	- You must find out the roll+ potency from the COR in party and configure it in settings
+	- You must find out the roll+ potency from the COR in party and configure it using the command: //rc rollplus [0|3|5|6|7|8] <name>
 
 ## Commands
 
-Do not type | or [ ] when using commands:
+Do not type | or < > or [ ] when using commands:
 
 List commands: //rc help
 
@@ -60,8 +63,9 @@ List commands: //rc help
 - //rc roll2 <name> - Set Roll 2
 - //rc cc [on|off] - Crooked Cards on/off
 - //rc cc [roll1|roll2] - Set Crooked Cards for Roll 1 or Roll 2
-- //rc holdtp on|off - Hold TP on/off
-- //rc rollplus [0|3|5|6|7|8] - Set the COR roll+ potency (not self)
+- //rc holdtp [on|off] - Hold TP on/off
+- //rc rollplus [0|3|5|6|7|8] <name> - Set Roll+ for another COR
+- //rc rollplus save <name> - Save Roll+ for another COR
 - //rc display [on|off] - Display on/off
 - //rc engaged [on|off] - Rolls only when engaged
 - //rc status - Show current status
