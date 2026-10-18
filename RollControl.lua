@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
 
 _addon.name = 'RollControl'
-_addon.version = '2.0.6'
+_addon.version = '2.0.8'
 _addon.author = 'Addon Ave'
 _addon.commands = {'rc'}
 
@@ -58,10 +58,11 @@ defaults.holdtp = false				-- Prevents rolls from being used while your TP is at
 defaults.reroll_unlucky = true		-- If you land an Unlucky total, automatically Double-Up again
 defaults.Roll_ind_1 = 8     		-- Default: Chaos Roll
 defaults.Roll_ind_2 = 12			-- Default: Samurai Roll
-defaults.remote_roll_plus = 7   	-- COR roll+ potency (not self): 0|3|5|6|7|8
+defaults.remote_roll_plus = 7   	-- Fallback for Roll+ used for other CORs
+defaults.rollplus_by_name = {}      -- Saved Roll+ potency by COR name
 defaults.showdisplay = true   		-- Show small UI text line
-defaults.displayx = 16
-defaults.displayy = 674
+defaults.display_x = 16
+defaults.display_y = 674
 
 settings = config.load(defaults)
 
@@ -95,9 +96,10 @@ rollPlusStepCache = {}
 lastJobBonusAnnounce = {}
 
 local remoteRollPlus = 0
+local remoteRollPlusByName = {}
 local was_dead = false
 
--- Position-based idle movement detection
+-- Position-based idle movement detection.
 local last_pos = {x = nil, y = nil, z = nil}
 local is_idle_moving = false
 local idle_move_threshold = 0.01
@@ -110,12 +112,12 @@ local movement_pause_active = false
 local idle_stationary_samples = 0
 local idle_stop_confirm_samples = 3
 
--- Prevent duplicate Double-Up command queues for the same roll result
+-- Prevent duplicate Double-Up command queues for the same roll result.
 local du_guard_until = 0
 local du_guard_rollID = 0
 local du_guard_rollNum = 0
 
--- Prevent duplicate Unlucky-triggered Double-Up queues for the same roll result
+-- Prevent duplicate Unlucky-triggered Double-Up queues for the same roll result.
 local reroll_guard_until = 0
 local reroll_guard_rollID = 0
 local reroll_guard_rollNum = 0
@@ -126,8 +128,8 @@ local pending_double_up_retry_count = 0
 local pending_double_up_retry_delay = 2.4
 local max_double_up_retries = 2
 
--- Internal roll-chain scheduler for delayed roll actions
--- While Idle and moving, due actions remain queued and execute only after movement stops
+-- Internal roll-chain scheduler for delayed roll actions.
+-- While Idle and moving, due actions remain queued and execute only after movement stops.
 local pending_roll_actions = {}
 
 local function queue_roll_action(command, delay)
@@ -171,11 +173,11 @@ pending_double_up_retry = false
 pending_double_up_retry_count = 0
 end
 
--- Save roll-chain commands blocked by idle movement and replay them after stopping
+-- Save roll-chain commands blocked by idle movement and replay them after stopping.
 local function save_movement_paused_command(command)
 if not command or command == '' then return end
 
--- Avoid saving the exact same queued command more than once in a row
+-- Avoid saving the exact same queued command more than once in a row.
 if movement_paused_commands[#movement_paused_commands] ~= command then
 movement_paused_commands[#movement_paused_commands + 1] = command
 movement_pause_active = true
@@ -291,14 +293,14 @@ local p = packets.parse('incoming', data)
 if not p then
 return
 end
--- 0x0DD/0x0DF: single actor update
+-- 0x0DD/0x0DF: single actor update.
 if id == 0x0DD or id == 0x0DF then
 local mob_id = p.ID or p['ID'] or p['Mob ID']
 local job = p['Main job'] or p['Main Job'] or p['Job'] or p['Main Job ID']
 
 store_party_job(mob_id, job)
 
--- Party list
+-- Party list.
 elseif id == 0x044 then
 for i = 0, 17 do
 local memberId = p['ID ' .. i]
@@ -308,8 +310,8 @@ end
 end
 end)
 
+-- Member must be a valid party entry with a mob and mob.id.
 local function member_has_job(member, job_key)
--- Member must be a valid party entry with a mob and mob.id
 if type(member) ~= 'table' or not member.mob or not member.mob.id then
 return false
 end
@@ -319,16 +321,16 @@ return false
 end
 job_key = job_key:lower()
 
--- Lookup the wanted job ID
+-- Lookup the wanted job ID.
 local wantedId = jobIdMap[job_key]
 if not wantedId then
 return false
 end
 
--- Mob ID in party
+-- Mob ID in party.
 local mobId = member.mob.id
 
--- Check packet-tracked job ID
+-- Check packet-tracked job ID.
 local trackedJob = partyJobs[mobId]
 
 if trackedJob and trackedJob == wantedId then
@@ -338,7 +340,7 @@ end
 return false
 end
 
--- Check if any party member has this main job
+-- Check if any party member has this main job.
 local function party_has_job(job_key)
 if not job_key then
 return false
@@ -350,7 +352,7 @@ if not party then
 return false
 end
 
--- Local party slots: p0 - p5
+-- Local party slots: p0 - p5.
 for i = 0, 5 do
 local member = party['p' .. i]
 if type(member) == 'table' and member.mob and member.mob.id then
@@ -382,7 +384,6 @@ end
 --------------------------------------------------------------------------------
 
 windower.register_event('load', function()
--- Equipment tracking
 gearTable = {
 [0]  = getGear('main'),
 [1]  = getGear('sub'),
@@ -404,7 +405,6 @@ gearTable = {
 
 buffId = S{309} + S(res.buffs:english(string.endswith-{' Roll'})):map(table.get-{'id'})
 
--- Colors
 partyColor = {
 p0 = string.char(0x1F, 222),	-- Blue
 p1 = string.char(0x1F, 28),		-- Coral
@@ -421,8 +421,7 @@ rollIndex = {
 'Blitzer\'s Roll','Tactician\'s Roll','Allies\' Roll','Miser\'s Roll','Companion\'s Roll','Avenger\'s Roll','Naturalist\'s Roll','Runeist\'s Roll'
 }
 
--- 6: 4, 7: 8, 8: 9, 9: 8, 10: 2
--- Roll Total, Bust Effect, Effect, Lucky, Unlucky, Roll +1, Job Bonus, {Equipment Slot, Bonus Equipment, and Effect}
+-- Roll Total, Bust Effect, Effect, Lucky, Unlucky, Roll +1, Job Bonus, {Equipment Slot, Bonus Equipment, and Effect}.
 local rollTable = {
 ['Allies\'']      = {2,3,20,5,7,9,11,13,15,1,25, '-5', '% Skillchain Damage', 3, 10, 1, {nil,0}, {6, 11120, 27084, 27085, 23235, 23570, 5}},
 ['Avenger\'s']    = {3,4,5,14,6,7,8,2,9,10,16, '-4', '% Counter Rate', 4, 8, 1, {nil,0}},
@@ -431,7 +430,7 @@ local rollTable = {
 ['Bolter\'s']     = {6,6,16,8,8,10,10,12,4,14,20, '0', '% Movement Speed', 3, 9, 4, {nil,0}},
 ['Caster\'s']     = {6,15,7,8,9,10,5,11,12,13,20, '-10', '% Fast Cast', 2, 7, 3, {nil,0}, {7, 11140, 27269, 27269, 10}},
 ['Chaos']         = {64,80,96,256,112,128,160,32,176,192,320, '-9.76', '% Attack/Ranged Attack', 4, 8, 32, {'drk',100}, {nil,0}},
-['Choral']        = {-8,-42,-11,-15,-19,-4,-23,-27,-31,-35,-50, '+25', '% Spell Interruption Rate', 2, 6, 4, {'brd',-25}, {nil,0}},
+['Choral']        = {-8,-42,-11,-15,-19,-4,-23,-27,-31,-35,-50, '+25', '% Spell Interruption Rate', 2, 6, -4, {'brd',-25}, {nil,0}},
 ['Companion\'s']  = {{20,4},{50,20},{20,6},{20,8},{30,10},{30,12},{30,14},{40,16},{40,18},{10,3},{70,30}, '0', ' Pet: Regain/Regen', 2, 10, {5,2}, {nil,0}},
 ['Corsair\'s']    = {10,11,11,12,20,13,15,16,8,17,24, '-6', '% Experience Bonus', 5, 9, 2, {'cor',5}, {nil,0}},
 ['Courser\'s']    = {2,3,11,4,5,6,7,8,1,10,12, '-3', '% Snapshot', 3, 9, 1, {nil,0}, {8, 11160, 27443, 27444, 10746, 23704, 3}},
@@ -466,16 +465,20 @@ end
 end
 
 settings = config.load(defaults)
--- Runtime-only setting
+-- Runtime-only setting.
 settings.engaged = defaults.engaged
 remoteRollPlus = settings.remote_roll_plus or 0
+remoteRollPlusByName = {}
+for name, value in pairs(settings.rollplus_by_name or {}) do
+remoteRollPlusByName[name:lower()] = tonumber(value) or 0
+end
 
 if settings.showdisplay then
 create_display(settings)
 end
 end)
 
--- Reset state for each load/login
+-- Reset state for each load/login.
 local lastRollId = 0
 
 windower.register_event('load', 'login', function()
@@ -524,7 +527,7 @@ Cities = S{
 -- Movement helper
 --------------------------------------------------------------------------------
 
--- Movement is tracked from outgoing player-update packets (0x015)
+-- Movement is tracked from outgoing player-update packets.
 local movement_packet_pos = {x = nil, y = nil, z = nil}
 local movement_last_change = 0
 local movement_stop_timeout = 0.85
@@ -550,8 +553,8 @@ local status = res.statuses[p.status] and res.statuses[p.status].english
 return status == 'Idle' and is_idle_moving
 end
 
--- Execute one due roll-chain step at a time
--- Movement pauses the queue without discarding it, so Double-Up Chance can continue after the player stops
+-- Execute one due roll-chain step at a time.
+-- Movement pauses the queue without discarding it, so Double-Up Chance can continue after the player stops.
 windower.register_event('prerender', function()
 if not autoroll or #pending_roll_actions == 0 then return end
 if idle_moving_now() then return end
@@ -562,8 +565,8 @@ if action and action.due and now >= action.due then
 table.remove(pending_roll_actions, 1)
 windower.send_command(action.command)
 
--- Start the next step's delay only after this step actually executes
--- This preserves Snake Eye -> Double-Up spacing even after a long movement pause
+-- Start the next step's delay only after this step actually executes.
+-- This preserves Snake Eye -> Double-Up spacing even after a long movement pause.
 local next_action = pending_roll_actions[1]
 if next_action and not next_action.due then
 next_action.due = now + (next_action.delay_after_previous or 0)
@@ -571,8 +574,8 @@ end
 end
 end)
 
--- A final stationary packet is normally sent when movement ends
--- The timeout is only a fallback for cases where that final packet is not delivered
+-- A final stationary packet is normally sent when movement ends.
+-- The timeout is only a fallback for cases where that final packet is not delivered.
 windower.register_event('prerender', function()
 if is_idle_moving and movement_last_change > 0 then
 if socket.gettime() - movement_last_change >= movement_stop_timeout then
@@ -593,9 +596,9 @@ end
 local windowersettings = windower.get_windower_settings()
 local x, y
 
-if settings.displayx and settings.displayy then
-x = settings.displayx
-y = settings.displayy
+if settings.display_x and settings.display_y then
+x = settings.display_x
+y = settings.display_y
 end
 
 displayBox = texts.new()
@@ -630,7 +633,7 @@ if player.main_job == 'COR' and settings.Roll_ind_1 ~= settings.Roll_ind_2 then
 displayBox:append("Roll 2: "..rollIndex[settings.Roll_ind_2].."  ")
 end
 
--- Crooked Cards status
+-- Crooked Cards status.
 if settings.crooked then
 local cc_roll = settings.crooked_roll or 1
 displayBox:append("CC: Roll " .. cc_roll .. "  ")
@@ -638,10 +641,10 @@ else
 displayBox:append("CC: Off  ")
 end
 
--- Hold TP status
+-- Hold TP status.
 displayBox:append("Hold TP: " .. (settings.holdtp and "On" or "Off") .. "  ")
 
--- Status
+-- Status.
 displayBox:append("[RC] ")
 if autoroll then
 if haveBuff('Sneak') and haveBuff('Invisible') then
@@ -664,12 +667,12 @@ end
 displayBox:show()
 end
 
--- Disable automatic rolling when dead
+-- Disable automatic rolling when dead.
 windower.register_event('prerender', function()
 local p = windower.ffxi.get_player()
 if not p or not p.vitals then return end
 
--- Detect death
+-- Detect death.
 if p.vitals.hp == 0 then
 if autoroll and not was_dead then
 autoroll = false
@@ -687,13 +690,12 @@ was_dead = true
 return
 end
 
--- Reset flag after raise
+-- Reset flag after raise.
 was_dead = false
 end)
 
 windower.register_event('outgoing chunk', function(id, data)
--- Player position update
--- Use packet coordinates as the source for Idle movement so automatic rolls cannot fire while the character runs
+-- Use packet coordinates as the source for Idle movement so automatic rolls cannot fire while the character runs.
 if id == 0x015 then
 local pkt = packets.parse('outgoing', data)
 if pkt then
@@ -718,9 +720,9 @@ elseif status ~= 'Idle' then
 set_idle_moving(false)
 end
 
--- Do not clear movement from a single unchanged 0x015 packet
--- Duplicate position packets can still send while the character is still running
--- Movement ends only after no coordinate change has been observed for the timeout
+-- Do not clear movement from a single unchanged 0x015 packet.
+-- Duplicate position packets can still send while the character is still running.
+-- Movement ends only after no coordinate change has been observed for the timeout.
 end
 
 movement_packet_pos.x = x
@@ -736,12 +738,12 @@ end
 end)
 
 windower.register_event('incoming chunk', function(id, data)
--- Display hide/show
+-- Display hide/show.
 if id == 0x00A and displayBox then
 displayBox:show()
 end
 
--- Gear tracking
+-- Gear tracking.
 if id == 0x050 then
 local packet = packets.parse('incoming', data)
 local slot = windower.ffxi.get_items(packet['Inventory Bag'])[packet['Inventory Index']]
@@ -754,11 +756,6 @@ end)
 --------------------------------------------------------------------------------
 
 function doRoll()
---[[Block rolls in city zones
-if Cities:contains(res.zones[windower.ffxi.get_info().zone].english) then
-return
-end
-]]
 if not autoroll then
 return
 end
@@ -782,35 +779,35 @@ if stealthy then
 return
 end
 
--- Get player once and reuse
+-- Get player once and reuse.
 local player = windower.ffxi.get_player()
 if not player then
 return
 end
 
--- Only run for COR main or sub
+-- Only run for COR main or sub.
 if not (player.main_job == 'COR' or player.sub_job == 'COR') then
 return
 end
 
--- Idle or Engaged
+-- Idle or Engaged.
 local status = res.statuses[player.status].english
 if not (((status == 'Idle') and not settings.engaged) or status == 'Engaged') then
 return
 end
 
--- Suspend rolls while idle and moving without discarding the active roll chain
--- Read only the cached movement state maintained by prerender
+-- Suspend rolls while idle and moving without discarding the active roll chain.
+-- Read only the cached movement state maintained by prerender.
 if status == 'Idle' and idle_moving_now() then
 return
 end
 
--- Do not start a fresh roll while a movement-paused chain is being replayed
+-- Do not start a fresh roll while a movement-paused chain is being replayed.
 if socket.gettime() < movement_resume_until then
 return
 end
 
--- Hold TP: stop rolls if toggle is On and TP >= 1000
+-- Hold TP: stop rolls if toggle is On and TP >= 1000.
 if settings.holdtp and player.vitals and player.vitals.tp and player.vitals.tp >= 1000 then
 return
 end
@@ -818,7 +815,7 @@ end
 local abil_recasts = windower.ffxi.get_ability_recasts()
 local available_ja = S(windower.ffxi.get_abilities().job_abilities)
 
--- Fold off Bust if possible
+-- Fold off Bust if possible.
 if player.main_job == 'COR'
 and haveBuff('Bust')
 and available_ja:contains(178)
@@ -829,12 +826,12 @@ windower.send_command('input /ja "Fold" <me>')
 return
 end
 
--- Phantom Roll global recast
+-- Phantom Roll global recast.
 if abil_recasts[193] and abil_recasts[193] > 0 then
 return
 end
 
--- Reset last roll if you lost both rolls
+-- Reset last roll if you lost both rolls.
 if not haveBuff(rollIndex[settings.Roll_ind_1]) and not haveBuff(rollIndex[settings.Roll_ind_2]) then
 lastRoll = 0
 lastRollCrooked = false
@@ -871,7 +868,6 @@ end
 end
 end
 
--- Loop every 4 seconds
 doRoll:loop(4)
 
 --------------------------------------------------------------------------------
@@ -879,7 +875,7 @@ doRoll:loop(4)
 --------------------------------------------------------------------------------
 
 windower.register_event('incoming text', function(old, new, color)
--- Hide Battlemod roll lines
+-- Hide Battlemod roll lines.
 if old:match("Roll.* The total.*")
 or old:match('.*Roll.*' .. string.char(0x81, 0xA8))
 or (old:match('.*uses Double.* The total') and color ~= 123)
@@ -887,12 +883,12 @@ then
 return true
 end
 
--- Hide
+-- Hide.
 if old:match('.* receives the effect of .* Roll.') then
 return true
 end
 
--- Hide your own command echo
+-- Hide your own command echo.
 if old:find(">> /ja ")
 or old:find(">> /jobability ")
 or old:find(">> /ma ")
@@ -905,12 +901,12 @@ or old:find(">> /weaponskill ") then
 return true
 end
 
--- Hide
+-- Hide.
 if old:find("cannot perform that action on the selected sub%-target") then
 return true
 end
 
--- Retry Double-Up once if it was attempted too early
+-- Retry Double-Up once if it was attempted too early.
 if old:find("Unable to use job ability") then
 if pending_double_up_retry and pending_double_up_retry_count < max_double_up_retries then
 pending_double_up_retry_count = pending_double_up_retry_count + 1
@@ -919,7 +915,7 @@ end
 return true
 end
 
--- Hides the system message below
+-- Hides the system message below.
 if old:find("A command error occurred") then
 return true
 end
@@ -935,7 +931,7 @@ windower.register_event('outgoing text', function(original, modified)
 modified = modified or original
 local cleaned = windower.convert_auto_trans(modified)
 
--- Block queued roll actions if you are idle and moving
+-- Block queued roll actions if you are idle and moving.
 if cleaned and idle_moving_now() then
 local lower = cleaned:lower()
 if lower:match('/jobability%s+"?[^"]*roll')
@@ -956,12 +952,12 @@ if cleaned and cleaned:lower() == '/invisible' then
 return '/ma "Invisible" <me>'
 end
 
--- Track Crooked Cards usage (sets flag for the next roll)
+-- Track Crooked Cards usage (sets flag for the next roll).
 if cleaned:match('/jobability \"?Crooked Cards') or cleaned:match('/ja \"?Crooked Cards') then
 crookedPending = true
 end
 
--- Stop Double-Up on lucky unless confirmed
+-- Stop Double-Up on lucky unless confirmed.
 if cleaned:match('/jobability \"?Double.*Up') or cleaned:match('/ja \"?Double.*Up') then
 if not midRoll and lastRoll and lastRoll >= 7 then
 modified = ""
@@ -1000,7 +996,7 @@ end)
 --------------------------------------------------------------------------------
 
 windower.register_event('action', function(act)
--- Only interested in Phantom Roll actions that are in rollInfo
+-- Only interested in Phantom Roll actions that are in rollInfo.
 if act.category ~= 6 or not table.containskey(rollInfo, act.param) then
 return
 end
@@ -1046,7 +1042,7 @@ end
 local membersHit = table.concat(rollMembers, ', ')
 local amountHit = settings.effected == 1 and '[' .. #rollMembers .. '] ' or ''
 
--- Check if this roll is under Crooked Cards
+-- Check if this roll is under Crooked Cards.
 local crookedApplied = false
 if actor == (player and player.id or 0) then
 if crookedPending or lastRollCrooked or haveBuff('Crooked Cards') then
@@ -1059,7 +1055,7 @@ crookedApplied = true
 end
 end
 
-local rollBonus = RollEffect(rollID, rollNum + 1, crookedApplied)
+local rollBonus = RollEffect(rollID, rollNum + 1, crookedApplied, actor)
 
 local luckChat = ''
 
@@ -1078,31 +1074,31 @@ crookedRollActive[rollID] = nil
 local val = rollInfo[rollID][rollNum+1]
 local vnum = tonumber(val)
 
--- Crooked Cards: Bust penalty −20%
+-- Crooked Cards: Bust penalty −20%.
 if crookedApplied and vnum then
 vnum = vnum * 0.80
 val = vnum
 end
 
--- If this is Choral Roll, force the number to be negative
+-- If this is Choral Roll, force the number to be negative.
 if rollInfo[rollID][1] == "Choral" and vnum then
 val = -math.abs(vnum)
 end
 
--- Arrow (Bust)
+-- Arrow (Bust).
 windower.add_to_chat(1, string.char(31,167)..amountHit..'Bust! '..chat.controls.reset..chars.implies..' '..membersHit..' '..chars.implies..' ('..val..rollInfo[rollID][14]..')')
 else
 
--- Add "+" for positive bonuses, but leave negatives as is
+-- Add "+" for positive bonuses, but leave negatives as is.
 local bonusText = tostring(rollBonus)
 local bonusPrefix = ''
 
--- If it doesn't start with "-", treat it as positive and add "+"
+-- If it doesn't start with "-", treat it as positive and add "+".
 if not bonusText:match('^%-') then
 bonusPrefix = '+'
 end
 
--- Arrow (Bonus)
+-- Arrow (Bonus).
 windower.add_to_chat(1, amountHit..membersHit..chat.controls.reset..' '..chars.implies..' '..
 rollInfo[rollID][1]..' Roll '..chars['circle' .. rollNum]..
 luckChat..string.char(31,13)..' ('..bonusPrefix..bonusText..')'..
@@ -1115,7 +1111,7 @@ end
 -- Crooked Cards + Double-Up + Snake Eye
 --------------------------------------------------------------------------------
 
--- Ignore Phantom Roll used by trusts
+-- Ignore Phantom Roll used by trusts.
 if rollID == 177 then
 return
 end
@@ -1151,18 +1147,18 @@ if player_now.main_job == 'COR' then
 local abil_recasts = windower.ffxi.get_ability_recasts()
 local available_ja = S(windower.ffxi.get_abilities().job_abilities)
 
--- If we get duplicate Phantom Roll action packets for the same roll result, don't queue Double-Up twice
+-- If we get duplicate Phantom Roll action packets for the same roll result, don't queue Double-Up twice.
 local now_clock = os.clock()
 if rollID == du_guard_rollID and rollNum == du_guard_rollNum and now_clock < du_guard_until then
 return
 end
 
--- If we land the Unlucky number, prefer Snake Eye + Double-Up if available
+-- If we land the Unlucky number, prefer Snake Eye + Double-Up if available.
 if settings.reroll_unlucky
 and rollNum == rollInfo[rollID][16]
 then
 local now_clock2 = os.clock()
--- Guard against duplicate action packets producing multiple Double-Up queues
+-- Guard against duplicate action packets producing multiple Double-Up queues.
 if not (rollID == reroll_guard_rollID and rollNum == reroll_guard_rollNum and now_clock2 < reroll_guard_until) then
 local doubleReady = abil_recasts[194] == 0
 local snakeReady = abil_recasts[197] == 0
@@ -1193,11 +1189,11 @@ end
 end
 end
 
--- Snake Eye: 10 or (Lucky -1)
+-- Snake Eye: 10 or (Lucky -1).
 local snakeReady = abil_recasts[197] == 0
 local doubleReady = abil_recasts[194] == 0
 
--- If roll is exactly 10, use Snake Eye before Double-Up to guarantee 11
+-- If roll is exactly 10, use Snake Eye before Double-Up to guarantee 11.
 if available_ja:contains(177) and snakeReady and doubleReady and rollNum == 10 then
 midRoll = true
 du_guard_rollID = rollID
@@ -1212,7 +1208,7 @@ queue_roll_sequence({
 })
 return
 
--- If current roll is 1 below lucky number and Snake Eye + Double-Up are ready, queue Snake Eye + Double-Up to guarantee lucky
+-- If current roll is 1 below lucky number and Snake Eye + Double-Up are ready, queue Snake Eye + Double-Up to guarantee lucky.
 elseif available_ja:contains(177) and snakeReady and doubleReady
 and rollNum == (rollInfo[rollID][15] - 1) then
 midRoll = true
@@ -1229,7 +1225,7 @@ queue_roll_sequence({
 return
 end
 
--- Never queue Double-Up once we've hit a roll of 7 or higher unless the roll is unlucky
+-- Never queue Double-Up once we've hit a roll of 7 or higher unless the roll is unlucky.
 if lastRoll and lastRoll >= 7 and lastRoll ~= rollInfo[rollID][16] then
 return
 end
@@ -1239,7 +1235,7 @@ lastRoll = rollNum
 return
 end
 
--- If current roll is 7 or lower queue Double-Up
+-- If current roll is 7 or lower queue Double-Up.
 if doubleReady and rollNum <= 7 then
 midRoll = true
 du_guard_rollID = rollID
@@ -1259,7 +1255,7 @@ end)
 -- RollEffect + BustRate + ReportRollInfo
 --------------------------------------------------------------------------------
 
-function RollEffect(rollid, rollnum, crookedApplied)
+function RollEffect(rollid, rollnum, crookedApplied, rollActor)
 if rollnum == 13 then
 return
 end
@@ -1268,26 +1264,18 @@ local rollName = rollInfo[rollid][1]
 local rollVal = rollInfo[rollid][rollnum]
 
 --------------------------------------------------------------------------------
--- Companion's Roll: Special Text
---------------------------------------------------------------------------------
-
-if rollName == "Companion\'s" then
-local hpVal = rollVal[1]
-local tpVal = rollVal[2]
-return "Pet:"..hpVal.." Regen".." +"..tpVal.." Regain"
-end
-
---------------------------------------------------------------------------------
 -- Roll+ from COR gear or remote_roll_plus
 --------------------------------------------------------------------------------
 
 if rollVal ~= '?' then
 local p = player or windower.ffxi.get_player()
-local isLocalCOR = p and (p.main_job == 'COR' or p.sub_job == 'COR')
+local isLocalCOR = p
+and rollActor == p.id
+and (p.main_job == 'COR' or p.sub_job == 'COR')
 local step = 0
 
 if isLocalCOR then
--- Use cached step if we already computed it for this roll ID
+-- Use cached step if we already computed it for this roll ID.
 step = rollPlusStepCache[rollid]
 
 if not step then
@@ -1320,11 +1308,25 @@ end
 rollPlusStepCache[rollid] = step
 end
 else
--- Not on COR: use configured Roll+ item every time
-step = remoteRollPlus or 0
+-- Roll performed by another COR: use Roll+ configured for that actor's name.
+local roller = rollActor and windower.ffxi.get_mob_by_id(rollActor) or nil
+local rollerName = roller and roller.name and roller.name:lower() or nil
+step = (rollerName and remoteRollPlusByName[rollerName]) or 0
 end
 
--- Apply Roll+ using the roll's configured step value
+-- Apply Roll+ using the roll's configured step value.
+if rollName == "Companion's" then
+-- Companion's stores {Regain, Regen}; calculate both without changing the base table.
+local rollStep = rollInfo[rollid][17]
+local tpVal = rollVal[1] + rollStep[1] * step
+local hpVal = rollVal[2] + rollStep[2] * step
+if crookedApplied then
+tpVal = math.floor(tpVal * 1.20)
+hpVal = math.floor(hpVal * 1.20)
+end
+return "Pet:"..tpVal.." Regain +"..hpVal.." Regen"
+end
+
 if step > 0 and type(rollInfo[rollid][17]) == 'number' then
 rollVal = rollVal + (rollInfo[rollid][17] * step)
 end
@@ -1339,13 +1341,13 @@ local baseJob = jobInfo[1]
 local bonusAmt = jobInfo[2]
 
 if baseJob and type(bonusAmt) == 'number' then
--- Use override if present; otherwise use the job from rollInfo
+-- Use override if present; otherwise use the job from rollInfo.
 local effectiveJob = forcedBonusJob or baseJob
 
 if party_has_job(effectiveJob) then
 rollVal = rollVal + bonusAmt
 
--- Announce job bonus applied
+-- Announce job bonus applied.
 local now = os.time()
 local last = lastJobBonusAnnounce[rollid] or 0
 
@@ -1397,12 +1399,12 @@ end
 -- Special conversions
 --------------------------------------------------------------------------------
 
--- Bolter's: convert internal to % move speed
+-- Bolter's: convert internal to % move speed.
 if rollName == "Bolter's" then
 rollVal = '%.0f':format(rollVal)
 end
 
--- Chaos/Gallant's/Beast: convert internal units to %
+-- Chaos/Gallant's/Beast: convert internal units to %.
 if rollName == "Beast" or rollName == "Chaos" or rollName == "Gallant's" then
 rollVal = '%.2f':format(rollVal/1024 * 100)
 end
@@ -1446,7 +1448,7 @@ windower.register_event('lose buff', function(buff_id)
 if not autoroll then return end
 if not is_roll_block_buff(buff_id) then return end
 
--- Debuff cleared: allow rolling again
+-- Debuff cleared: allow rolling again.
 midRoll = false
 crookedPending = false
 zonedelay = 1
@@ -1614,7 +1616,7 @@ update_displaybox()
 return
 end
 
--- Crooked Cards
+-- Crooked Cards.
 if sub == "cc" then
 if not cmd[2] then
 if settings.crooked then
@@ -1670,40 +1672,55 @@ windower.add_to_chat(18, 'Not a recognized command (use on/off)')
 end
 
 config.save(settings)
-update_displaybox() -- Make the display refresh
+update_displaybox()
 
 return
 end
 
--- Roll+ potency (for the COR in your party)
+-- Roll+ potency by COR name.
 if sub == "rollplus" then
+local valid = S{0,3,5,6,7,8}
+
 if not cmd[2] then
-windower.add_to_chat(18, string.format('Roll+ potency: %d', remoteRollPlus or 0))
-windower.add_to_chat(18, 'Valid Roll+ potency: 0|3|5|6|7|8')
+return
+end
+
+-- Save the current runtime value for this COR name to settings.
+if cmd[2] == 'save' then
+local name = cmd[3]
+if not name or name == '' then
+return
+end
+
+local key = name:lower()
+local value = remoteRollPlusByName[key]
+if value == nil then
+windower.add_to_chat(18, '[RollControl] No Roll+ value set for '..name)
+return
+end
+
+settings.rollplus_by_name = settings.rollplus_by_name or {}
+settings.rollplus_by_name[key] = value
+config.save(settings)
+windower.add_to_chat(18, string.format('[RollControl] Saved Roll+ %d for %s', value, name))
 return
 end
 
 local n = tonumber(cmd[2])
-if not n then
+local name = cmd[3]
+
+if not n or not valid:contains(n) then
+windower.add_to_chat(18, 'Invalid Roll+ potency. Valid: 0|3|5|6|7|8')
 return
 end
 
--- Only allow the real Roll+ amounts
-local valid = S{0,3,5,6,7,8}
-if not valid:contains(n) then
-windower.add_to_chat(18, 'Invalid Roll+ potency')
+if not name or name == '' then
 return
 end
 
-remoteRollPlus = n
-settings.remote_roll_plus = n
-config.save(settings)
-
-if n == 0 then
-windower.add_to_chat(18, 'Roll+ disabled')
-else
-windower.add_to_chat(18, string.format('Roll+ potency set to: %d', n))
-end
+local key = name:lower()
+remoteRollPlusByName[key] = n
+windower.add_to_chat(18, string.format('[RollControl] Roll+ for %s set to: %d', name, n))
 return
 end
 
@@ -1752,7 +1769,7 @@ end
 if sub == "status" then
 windower.add_to_chat(18,'[RollControl] Status:')
 windower.add_to_chat(18, 'Crooked Cards: ' .. (settings.crooked and 'On' or 'Off'))
-windower.add_to_chat(18, 'Roll+ potency (not self): ' .. (settings.remote_roll_plus or 0))
+windower.add_to_chat(18, 'Roll+ potency for other CORs is configured by name')
 return
 end
 
@@ -1764,7 +1781,8 @@ windower.add_to_chat(2,' //rc roll2 <name> - Set Roll 2')
 windower.add_to_chat(2,' //rc cc [on|off] - Crooked Cards on/off')
 windower.add_to_chat(2,' //rc cc [roll1|roll2] - Set Crooked Cards for Roll 1 or Roll 2')
 windower.add_to_chat(2,' //rc holdtp on|off - Hold TP on/off')
-windower.add_to_chat(2,' //rc rollplus [0|3|5|6|7|8] - Set the COR roll+ potency (not self)')
+windower.add_to_chat(2,' //rc rollplus [0|3|5|6|7|8] <name> - Set Roll+ for another COR')
+windower.add_to_chat(2,' //rc rollplus save <name> - Save Roll+ for another COR')
 windower.add_to_chat(2,' //rc display [on|off] - Display on/off')
 windower.add_to_chat(2,' //rc engaged [on|off] - Rolls only when engaged')
 windower.add_to_chat(2,' //rc status - Show current status')
