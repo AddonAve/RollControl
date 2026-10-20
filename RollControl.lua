@@ -1173,7 +1173,7 @@ du_guard_rollID = rollID
 du_guard_rollNum = rollNum
 du_guard_until = now_clock2 + 1.5
 
-if available_ja:contains(177) and snakeReady then
+if settings.crooked and available_ja:contains(177) and snakeReady then
 pending_double_up_retry = true
 pending_double_up_retry_count = 0
 pending_double_up_retry_delay = 1.2
@@ -1194,7 +1194,7 @@ local snakeReady = abil_recasts[197] == 0
 local doubleReady = abil_recasts[194] == 0
 
 -- If roll is exactly 10, use Snake Eye before Double-Up to guarantee 11.
-if available_ja:contains(177) and snakeReady and doubleReady and rollNum == 10 then
+if settings.crooked and available_ja:contains(177) and snakeReady and doubleReady and rollNum == 10 then
 midRoll = true
 du_guard_rollID = rollID
 du_guard_rollNum = rollNum
@@ -1209,7 +1209,7 @@ queue_roll_sequence({
 return
 
 -- If current roll is 1 below lucky number and Snake Eye + Double-Up are ready, queue Snake Eye + Double-Up to guarantee lucky.
-elseif available_ja:contains(177) and snakeReady and doubleReady
+elseif settings.crooked and available_ja:contains(177) and snakeReady and doubleReady
 and rollNum == (rollInfo[rollID][15] - 1) then
 midRoll = true
 du_guard_rollID = rollID
@@ -1492,7 +1492,7 @@ update_displaybox()
 return
 end
 
--- Roll 1
+-- Roll 1.
 if sub == "roll1" then
 local which = "Roll 1"
 local key = "Roll_ind_1"
@@ -1554,7 +1554,7 @@ update_displaybox()
 return
 end
 
--- Roll 2
+-- Roll 2.
 if sub == "roll2" then
 local which = "Roll 2"
 local key = "Roll_ind_2"
@@ -1656,7 +1656,7 @@ update_displaybox()
 return
 end
 
--- Hold TP
+-- Hold TP.
 if sub == "holdtp" then
 if not cmd[2] then
 settings.holdtp = not settings.holdtp
@@ -1677,7 +1677,7 @@ update_displaybox()
 return
 end
 
--- Roll+ potency by COR name.
+-- Roll+ potency.
 if sub == "rollplus" then
 local valid = S{0,3,5,6,7,8}
 
@@ -1724,7 +1724,7 @@ windower.add_to_chat(18, string.format('[RollControl] Roll+ for %s set to: %d', 
 return
 end
 
--- Display
+-- Display.
 if sub == "display" then
 if not cmd[2] then
 settings.showdisplay = not settings.showdisplay
