@@ -6,6 +6,7 @@ It automates rolls when COR is main or sub job and displays accurate Phantom Rol
 **Version 2.0.8**
 1. Roll+ for another COR can be saved and set by name.
 2. Fixed the calculation for Companion's and Choral Roll.
+3. Snake Eye is disabled when Crooked Cards is off.
 
 **Version 2.0.6**
 1. Fixed an issue in Version 2.0.4. Pauses the current roll sequence instead of cancelling it while idle and moving.
@@ -41,7 +42,8 @@ It automates rolls when COR is main or sub job and displays accurate Phantom Rol
 	- Blocks accidental Double-Up on a Lucky roll and requires a second Double-Up command to confirm
 	- Double-Up on low rolls
 	- Retries Double-Up if you get unable to use job ability due to performing another action
-	- Snake Eye is used on unlucky rolls and roll 10
+	- Snake Eye is always used on unlucky rolls and roll 10
+	- Snake Eye is disabled when Crooked Cards is off
 
 **Hold TP:**
 	- Best used if Tactician's Roll is set
