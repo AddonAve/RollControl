@@ -5,7 +5,7 @@ It automates rolls when COR is main or sub job and displays accurate Phantom Rol
 
 **Version 2.0.8**
 1. Roll+ for another COR can be saved and set by name.
-2. Fixed the calculation for Companion's and Choral Roll.
+2. Fixed the calculation for Choral and Companion's Roll.
 3. Snake Eye is disabled when Crooked Cards is off.
 
 **Version 2.0.6**
