@@ -100,17 +100,10 @@ local remoteRollPlusByName = {}
 local was_dead = false
 
 -- Position-based idle movement detection.
-local last_pos = {x = nil, y = nil, z = nil}
 local is_idle_moving = false
-local idle_move_threshold = 0.01
-local idle_move_sample_interval = 0.10
-local last_move_sample_time = 0
-local was_idle_moving = false
 local movement_paused_commands = {}
 local movement_resume_until = 0
 local movement_pause_active = false
-local idle_stationary_samples = 0
-local idle_stop_confirm_samples = 3
 
 -- Prevent duplicate Double-Up command queues for the same roll result.
 local du_guard_until = 0
@@ -542,8 +535,6 @@ if movement_pause_active and #movement_paused_commands > 0 then
 resume_movement_paused_commands()
 end
 end
-
-was_idle_moving = is_idle_moving
 end
 
 local function idle_moving_now()
